@@ -1,0 +1,58 @@
+{
+  "The skin tone applies to emoji with toned forms": {
+    "A candidate in a tone": {
+      "unit": "e2e/skin-tone/engine.test.mjs › A candidate in a tone"
+    },
+    "Enter commits the tone": {
+      "unit": "e2e/skin-tone/engine.test.mjs › Enter commits the tone"
+    },
+    "The closing colon commits the tone": {
+      "unit": "e2e/skin-tone/engine.test.mjs › The closing colon commits the tone"
+    },
+    "An emoji with no toned form": {
+      "unit": "e2e/skin-tone/engine.test.mjs › An emoji with no toned form"
+    },
+    "No skin tone": {
+      "unit": "e2e/skin-tone/engine.test.mjs › No skin tone"
+    }
+  },
+  "The toned form of an emoji": {
+    "A hand in the light tone": {
+      "unit": "e2e/skin-tone/engine.test.mjs › A hand in the light tone"
+    },
+    "The VS16 after a modifier base goes": {
+      "unit": "e2e/skin-tone/engine.test.mjs › The VS16 after a modifier base goes"
+    },
+    "A person with a sign": {
+      "unit": "e2e/skin-tone/engine.test.mjs › A person with a sign"
+    },
+    "Two people get the same tone": {
+      "unit": "e2e/skin-tone/engine.test.mjs › Two people get the same tone"
+    },
+    "The handshake between two people stays bare": {
+      "unit": "e2e/skin-tone/engine.test.mjs › The handshake between two people stays bare"
+    },
+    "Every toned form is a sequence Unicode recommends": {
+      "none": "The coverage adapter reads node tests only, and this check runs in Rust: tone::tests::every_toned_form_is_in_the_ibus_dictionary in torpedo-core builds all 305 × 5 toned forms and checks each against /usr/share/ibus/dicts/emoji-en.dict through Python gi. The five sample forms of this requirement have their own e2e tests."
+    }
+  },
+  "Alias texts never take a skin tone": {
+    "An alias of a hand": {
+      "unit": "e2e/skin-tone/engine.test.mjs › An alias of a hand"
+    },
+    "An alias and a shortcode of the same emoji": {
+      "unit": "e2e/skin-tone/engine.test.mjs › An alias and a shortcode of the same emoji"
+    },
+    "The alias name as the best match": {
+      "unit": "e2e/skin-tone/engine.test.mjs › The alias name as the best match"
+    }
+  },
+  "Usage records the emoji without its skin tone": {
+    "A toned commit records the bare emoji": {
+      "unit": "e2e/skin-tone/engine.test.mjs › A toned commit records the bare emoji"
+    },
+    "A new skin tone keeps the ranking": {
+      "unit": "e2e/skin-tone/engine.test.mjs › A new skin tone keeps the ranking"
+    }
+  }
+}

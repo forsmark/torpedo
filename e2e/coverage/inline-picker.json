@@ -356,5 +356,19 @@
     "The shortcode it hides": {
       "unit": "e2e/inline-picker/aliases.test.mjs › The shortcode it hides"
     }
+  },
+  "Used emoji come first within a rank": {
+    "Two commits move an emoji to the front of its rank": {
+      "unit": "e2e/inline-picker/usage.test.mjs › Two commits move an emoji to the front of its rank"
+    },
+    "A higher usage score comes first": {
+      "unit": "e2e/inline-picker/usage.test.mjs › A higher usage score comes first"
+    },
+    "An unused exact match beats a used prefix match": {
+      "unit": "e2e/inline-picker/usage.test.mjs › An unused exact match beats a used prefix match"
+    },
+    "A used alias text comes first among aliases": {
+      "unit": "e2e/inline-picker/usage.test.mjs › A used alias text comes first among aliases"
+    }
   }
 }

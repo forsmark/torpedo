@@ -71,13 +71,21 @@ describe('settings-window: saving', () => {
     assert.match(readConfig(), /a19 = /);
   });
 
+  it('Saving a bad skin tone', () => {
+    writeConfig('skin_tone = "medium"\n');
+    const r = runSettings(box, ['--set-skin-tone', 'purple']);
+    assert.equal(r.status, 1);
+    assert.match(r.err, /: skin_tone: /);
+    assert.equal(readConfig(), 'skin_tone = "medium"\n');
+  });
+
   it('A comment and an unknown key survive', () => {
-    writeConfig('# my settings\nskin_tone = "medium"\n\n[aliases]\nlgtm = "👍"\n');
+    writeConfig('# my settings\ntheme = "dark"\n\n[aliases]\nlgtm = "👍"\n');
     const r = runSettings(box, ['--set-alias', 'ship=🚀']);
     assert.equal(r.status, 0, r.err);
     const text = readConfig();
     assert.match(text, /^# my settings$/m);
-    assert.match(text, /^skin_tone = "medium"$/m);
+    assert.match(text, /^theme = "dark"$/m);
     assert.match(text, /^lgtm = "👍"$/m);
     assert.match(text, /^ship = "🚀"$/m);
   });

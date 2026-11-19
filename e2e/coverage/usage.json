@@ -1,0 +1,92 @@
+{
+  "The usage file location": {
+    "The usage file under XDG_STATE_HOME": {
+      "unit": "e2e/usage/engine.test.mjs › The usage file under XDG_STATE_HOME"
+    },
+    "The default usage file location": {
+      "unit": "e2e/settings-window/usage.test.mjs › The default usage file location"
+    }
+  },
+  "A commit records usage": {
+    "Enter records the emoji": {
+      "unit": "e2e/usage/engine.test.mjs › Enter records the emoji"
+    },
+    "The closing colon records an alias text": {
+      "unit": "e2e/usage/engine.test.mjs › The closing colon records an alias text"
+    },
+    "Two commits of one emoji": {
+      "unit": "e2e/usage/engine.test.mjs › Two commits of one emoji"
+    },
+    "Typing a query writes nothing": {
+      "unit": "e2e/usage/engine.test.mjs › Typing a query writes nothing"
+    }
+  },
+  "Plain text records nothing": {
+    "Escape records nothing": {
+      "unit": "e2e/usage/engine.test.mjs › Escape records nothing"
+    },
+    "A query with no match records nothing": {
+      "unit": "e2e/usage/engine.test.mjs › A query with no match records nothing"
+    }
+  },
+  "The usage score fades with time": {
+    "A recent use beats an old one": {
+      "unit": "e2e/usage/engine.test.mjs › A recent use beats an old one"
+    },
+    "A commit adds to the faded score": {
+      "unit": "e2e/usage/engine.test.mjs › A commit adds to the faded score"
+    }
+  },
+  "The usage file keeps at most 200 entries": {
+    "A full usage file drops its lowest entry": {
+      "unit": "e2e/usage/engine.test.mjs › A full usage file drops its lowest entry"
+    },
+    "A usage file below the limit keeps every entry": {
+      "unit": "e2e/usage/engine.test.mjs › A usage file below the limit keeps every entry"
+    }
+  },
+  "The usage file is replaced in one step": {
+    "The usage file is replaced by a rename": {
+      "unit": "e2e/usage/engine.test.mjs › The usage file is replaced by a rename"
+    },
+    "A reader never sees part of a usage file": {
+      "unit": "e2e/usage/engine.test.mjs › A reader never sees part of a usage file"
+    }
+  },
+  "A missing or broken usage file never stops typing": {
+    "A broken usage file at start": {
+      "unit": "e2e/usage/engine.test.mjs › A broken usage file at start"
+    },
+    "A usage file with a bad entry": {
+      "unit": "e2e/usage/engine.test.mjs › A usage file with a bad entry"
+    },
+    "A commit replaces a broken usage file": {
+      "unit": "e2e/usage/engine.test.mjs › A commit replaces a broken usage file"
+    },
+    "A broken usage file is kept aside": {
+      "unit": "e2e/usage/engine.test.mjs › A broken usage file is kept aside"
+    }
+  },
+  "Turning usage off": {
+    "Usage off writes nothing": {
+      "unit": "e2e/usage/engine.test.mjs › Usage off writes nothing"
+    },
+    "Usage off ignores the usage file": {
+      "unit": "e2e/usage/engine.test.mjs › Usage off ignores the usage file"
+    },
+    "Usage off keeps the usage file": {
+      "unit": "e2e/usage/engine.test.mjs › Usage off keeps the usage file"
+    }
+  },
+  "The engine reads a changed usage file": {
+    "A new usage file when a search opens": {
+      "unit": "e2e/usage/engine.test.mjs › A new usage file when a search opens"
+    },
+    "A deleted usage file after focus-in": {
+      "unit": "e2e/usage/engine.test.mjs › A deleted usage file after focus-in"
+    },
+    "A commit after the usage file is deleted": {
+      "unit": "e2e/usage/engine.test.mjs › A commit after the usage file is deleted"
+    }
+  }
+}

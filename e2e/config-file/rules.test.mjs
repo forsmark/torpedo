@@ -48,6 +48,11 @@ describe('config-file: rules', () => {
   it('A trigger of four characters', () => bad('trigger = "::::"\n', 'trigger'));
   it('An empty trigger', () => bad('trigger = ""\n', 'trigger'));
   it('A trigger that is not a string', () => bad('trigger = 2\n', 'trigger'));
+  it('A known skin tone', () => good('skin_tone = "medium-dark"\n'));
+  it('A skin tone in upper case', () => bad('skin_tone = "Medium"\n', 'skin_tone'));
+  it('A skin tone that is not a string', () => bad('skin_tone = 3\n', 'skin_tone'));
+  it('Usage turned off', () => good('remember_usage = false\n'));
+  it('remember_usage as a string', () => bad('remember_usage = "no"\n', 'remember_usage'));
 
   it('A name with a plus sign', () => good('[aliases]\n"lgtm+" = "👍"\n'));
   it('A name with a space', () => bad('[aliases]\n"looks good" = "👍"\n', 'aliases.looks good'));

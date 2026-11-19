@@ -59,9 +59,22 @@ describe('config-file: the engine', () => {
     }));
 
   it('A key from a later version', () =>
-    withSession({ config: 'skin_tone = "medium"\ntrigger = ";;"\n\n[recents]\nlast = "🔥"\n' }, async (_s, app) => {
+    withSession({ config: 'theme = "dark"\ntrigger = ";;"\n\n[later]\nlast = "🔥"\n' }, async (_s, app) => {
       await app.type(';;fire:');
       assert.equal(app.text, '🔥');
+    }));
+
+  it('No skin_tone key', () =>
+    withSession({ config: 'trigger = "::"\n' }, async (_s, app) => {
+      await app.type('::wave:');
+      assert.equal(app.text, '👋');
+    }));
+
+  it('No remember_usage key', () =>
+    withSession({ config: 'trigger = "::"\n' }, async (session, app) => {
+      assert.equal(session.readUsage(), null);
+      await app.type('::fire:');
+      assert.ok(session.usageOf('🔥'));
     }));
 
   it('A new alias when a search opens', () =>
