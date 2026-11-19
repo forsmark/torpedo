@@ -18,7 +18,7 @@ A place where the trigger counts: the start of the text, or right after whitespa
 The list of matching emoji that GNOME Shell shows at the text cursor while a search is open.
 
 **Config file**:
-The TOML file `$XDG_CONFIG_HOME/torpedo/config.toml` that holds the user's trigger and aliases. The engine reads it, and the settings window writes it.
+The TOML file `$XDG_CONFIG_HOME/torpedo/config.toml` that holds the user's settings: the trigger, the aliases, the skin tone and whether torpedo records usage. The engine reads it, and the settings window writes it.
 
 **Component file**:
 The XML file in `/usr/share/ibus/component/` that tells IBus how to start the engine and names the engine `torpedo`.
@@ -45,7 +45,10 @@ The characters typed after the trigger during a search. The search matches them 
 The state that starts when the user types the full trigger at a boundary. It ends when the engine commits an emoji or the plain text, or when Backspace removes the trigger.
 
 **Settings window**:
-The `torpedo-settings` program, where the user edits the trigger and the aliases.
+The `torpedo-settings` program, where the user edits the config file and clears the usage file.
+
+**Skin tone**:
+One of the five Fitzpatrick modifiers, U+1F3FB to U+1F3FF, that torpedo adds to each emoji that gemoji marks with `skin_tones`. The config file names it with `skin_tone`.
 
 **Shortcode**:
 A Slack-style emoji name, such as thumbsup or +1, from gemoji data.
@@ -55,3 +58,12 @@ The text around the cursor that the app sends to the engine. The engine reads th
 
 **Trigger**:
 The one to three characters that start a search for an emoji name. It is "::" unless the config file sets another.
+
+**Usage**:
+The record of which emoji and alias texts the user committed, and how often and how lately. The search ranks used emoji first within each rank.
+
+**Usage file**:
+The TOML file `$XDG_STATE_HOME/torpedo/usage.toml` that holds the usage. Only the engine writes it, and the settings window can delete it.
+
+**Usage score**:
+A number for each entry of the usage: each commit adds 1, and the score halves every 14 days without a commit. The search orders used emoji by it.
