@@ -115,6 +115,26 @@ pub fn tone_label(t: SkinTone) -> String {
     format!("{} {name}", tone::apply("👋", t))
 }
 
+/// Where the skin tone selector starts: the tone of the file, or no tone at
+/// all when the file's value is bad. With no tone selected, picking any tone,
+/// even the default, is a change that saves.
+pub fn initial_tone_position(tone: Option<SkinTone>, bad: bool) -> u32 {
+    if bad {
+        return gtk::INVALID_LIST_POSITION;
+    }
+    let tone = tone.unwrap_or_default();
+    SkinTone::ALL.iter().position(|t| *t == tone).unwrap_or(0) as u32
+}
+
+/// What the Emoji group can save: the tone at the selector's position and the
+/// state of the switch. None while no tone is selected, or while the file's
+/// `remember_usage` is bad and the user has neither flipped the switch nor
+/// pressed "Use default".
+pub fn emoji_values(selected: u32, active: bool, remember_bad: bool) -> Option<(SkinTone, bool)> {
+    let tone = SkinTone::ALL.get(selected as usize).copied()?;
+    (!remember_bad).then_some((tone, active))
+}
+
 struct Ui {
     path: PathBuf,
     trigger: adw::EntryRow,
@@ -124,6 +144,8 @@ struct Ui {
     /// and nothing is saved until the user picks a value in that row.
     tone_problem: Option<String>,
     remember_problem: Option<String>,
+    /// The "Use default" button of the switch, shown while its value is bad.
+    remember_default: gtk::Button,
     trigger_error: gtk::Label,
     list: gtk::ListBox,
     rows: Vec<AliasRow>,
@@ -196,17 +218,21 @@ fn save(ui: &Shared) {
             }
         }
     }
-    if !checked.can_save() || ui.tone_problem.is_some() || ui.remember_problem.is_some() {
+    if !checked.can_save() {
         return;
     }
+    let Some((skin_tone, remember_usage)) = emoji_values(
+        ui.skin_tone.selected(),
+        ui.remember.is_active(),
+        ui.remember_problem.is_some(),
+    ) else {
+        return;
+    };
     let values = Values {
         trigger: trigger.clone(),
         aliases: checked.aliases.clone(),
-        skin_tone: SkinTone::ALL
-            .get(ui.skin_tone.selected() as usize)
-            .copied()
-            .unwrap_or_default(),
-        remember_usage: ui.remember.is_active(),
+        skin_tone,
+        remember_usage,
     };
     if ui.saved.as_ref() == Some(&values) {
         return;
@@ -361,6 +387,12 @@ fn build(app: &adw::Application, path: &Path) {
         .subtitle("Forget which emoji you used")
         .build();
     clear_row.add_suffix(&clear);
+    let remember_default = gtk::Button::builder()
+        .label("Use default")
+        .valign(gtk::Align::Center)
+        .visible(false)
+        .build();
+    remember.add_suffix(&remember_default);
     emoji_group.add(&skin_tone);
     emoji_group.add(&remember);
     emoji_group.add(&clear_row);
@@ -385,6 +417,7 @@ fn build(app: &adw::Application, path: &Path) {
         remember: remember.clone(),
         tone_problem: None,
         remember_problem: None,
+        remember_default: remember_default.clone(),
         trigger_error,
         list,
         rows: Vec::new(),
@@ -402,11 +435,15 @@ fn build(app: &adw::Application, path: &Path) {
             for a in doc.raw_aliases() {
                 add_row(&ui, &a.name, &a.text);
             }
-            let tone = doc.raw_skin_tone().unwrap_or_default();
-            let at = SkinTone::ALL.iter().position(|t| *t == tone).unwrap_or(0);
-            skin_tone.set_selected(at as u32);
+            let problems = doc.config().err().unwrap_or_default();
+            let bad = |key: &str| problems.iter().any(|p| p.key == key);
+            skin_tone.set_selected(initial_tone_position(
+                doc.raw_skin_tone(),
+                bad(tone::SKIN_TONE_KEY),
+            ));
             remember.set_active(doc.raw_remember_usage().unwrap_or(true));
-            if let Err(problems) = doc.config() {
+            remember_default.set_visible(bad(config::REMEMBER_USAGE_KEY));
+            if !problems.is_empty() {
                 let mut state = ui.borrow_mut();
                 for p in problems {
                     let row: &adw::PreferencesRow = if p.key == tone::SKIN_TONE_KEY {
@@ -462,12 +499,26 @@ fn build(app: &adw::Application, path: &Path) {
         }
         save_soon(&u);
     });
-    let u = ui.clone();
-    remember.connect_active_notify(move |row| {
-        if u.borrow_mut().remember_problem.take().is_some() {
+    let fix_remember = |u: &Shared, row: &adw::SwitchRow| {
+        let mut state = u.borrow_mut();
+        if state.remember_problem.take().is_some() {
             row.remove_css_class("error");
             row.set_subtitle("Show the emoji you use most first");
+            state.remember_default.set_visible(false);
         }
+    };
+    let u = ui.clone();
+    remember.connect_active_notify(move |row| {
+        fix_remember(&u, row);
+        save_soon(&u);
+    });
+    let u = ui.clone();
+    let row = remember.clone();
+    remember_default.connect_clicked(move |_| {
+        // The default is on. Setting it when it already shows does not
+        // notify, so the fix and the save run here as well.
+        row.set_active(true);
+        fix_remember(&u, &row);
         save_soon(&u);
     });
     let u = ui.clone();
@@ -589,5 +640,28 @@ mod tests {
         assert_eq!(tone_label(SkinTone::None), "👋 None");
         assert_eq!(tone_label(SkinTone::Medium), "👋🏽 Medium");
         assert_eq!(SkinTone::ALL.map(tone_label).len(), 6);
+    }
+
+    #[test]
+    fn a_bad_tone_in_the_file_starts_with_no_tone_selected() {
+        assert_eq!(initial_tone_position(Some(SkinTone::Medium), false), 3);
+        assert_eq!(initial_tone_position(None, false), 0);
+        assert_eq!(
+            initial_tone_position(None, true),
+            gtk::INVALID_LIST_POSITION
+        );
+        // Nothing saves while no tone is selected.
+        assert_eq!(emoji_values(gtk::INVALID_LIST_POSITION, true, false), None);
+        // Picking any tone then saves it, the default too.
+        assert_eq!(emoji_values(0, true, false), Some((SkinTone::None, true)));
+        assert_eq!(emoji_values(5, true, false), Some((SkinTone::Dark, true)));
+    }
+
+    #[test]
+    fn a_bad_switch_in_the_file_waits_for_the_user() {
+        assert_eq!(emoji_values(0, true, true), None);
+        // A flip or "Use default" clears the problem, and the value saves.
+        assert_eq!(emoji_values(0, true, false), Some((SkinTone::None, true)));
+        assert_eq!(emoji_values(0, false, false), Some((SkinTone::None, false)));
     }
 }
