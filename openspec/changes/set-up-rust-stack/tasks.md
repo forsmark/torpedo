@@ -2,17 +2,17 @@
 
 ## 1. Rust workspace
 
-- [ ] 1.1 Add `rust-toolchain.toml` with channel `stable` and the components `rustfmt` and `clippy`. Verify that `rustup show` in the repository names the stable toolchain from that file.
-- [ ] 1.2 Add the root `Cargo.toml` as a virtual workspace with `members = ["crates/*"]`, resolver 3, and edition 2024 and `publish = false` in `[workspace.package]`. Verify that `cargo metadata --no-deps` lists both crates once they exist.
-- [ ] 1.3 Add `crates/torpedo-core`, a library with a minimal skeleton and one trivial `#[test]`. It has no D-Bus or GTK dependency. Verify that `cargo test -p torpedo-core` runs one test and passes.
-- [ ] 1.4 Add `crates/torpedo-engine`, a binary that depends on `torpedo-core` by path, with a minimal `main` and one trivial `#[test]`. Add no other dependency. Verify that `cargo test -p torpedo-engine` runs one test and passes.
-- [ ] 1.5 Add `target/` to `.gitignore` and commit `Cargo.lock`. Verify that `git status` shows no file under `target/`.
-- [ ] 1.6 Verify that `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings` and `cargo check --workspace --all-targets` pass on the skeleton.
+- [x] 1.1 Add `rust-toolchain.toml` with channel `stable` and the components `rustfmt` and `clippy`. Verify that `rustup show` in the repository names the stable toolchain from that file.
+- [x] 1.2 Add the root `Cargo.toml` as a virtual workspace with `members = ["crates/*"]`, resolver 3, and edition 2024 and `publish = false` in `[workspace.package]`. Verify that `cargo metadata --no-deps` lists both crates once they exist.
+- [x] 1.3 Add `crates/torpedo-core`, a library with a minimal skeleton and one trivial `#[test]`. It has no D-Bus or GTK dependency. Verify that `cargo test -p torpedo-core` runs one test and passes.
+- [x] 1.4 Add `crates/torpedo-engine`, a binary that depends on `torpedo-core` by path, with a minimal `main` and one trivial `#[test]`. Add no other dependency. Verify that `cargo test -p torpedo-engine` runs one test and passes.
+- [x] 1.5 Add `target/` to `.gitignore` and commit `Cargo.lock`. Verify that `git status` shows no file under `target/`.
+- [x] 1.6 Verify that `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings` and `cargo check --workspace --all-targets` pass on the skeleton.
 
 ## 2. Node project for spec-checks
 
-- [ ] 2.1 Add a root `package.json`, private, with `"type": "module"`, `packageManager` set to the installed pnpm 12, and `typescript` as a dev dependency. Run `pnpm install` and commit `pnpm-lock.yaml`. Verify that `node -e "import('typescript')"` resolves from the root.
-- [ ] 2.2 Set `coverage.adapters` in `openspec/checks.json` to `[{ "kind": "node-test", "roots": ["e2e"] }]`. Verify that `node tools/spec-checks/bin/spec-checks verify` passes.
+- [x] 2.1 Add a root `package.json`, private, with `"type": "module"`, `packageManager` set to the installed pnpm 12, and `typescript` as a dev dependency. Run `pnpm install` and commit `pnpm-lock.yaml`. Verify that `node -e "import('typescript')"` resolves from the root.
+- [x] 2.2 Set `coverage.adapters` in `openspec/checks.json` to `[{ "kind": "node-test", "roots": ["e2e"] }]`. Verify that `node tools/spec-checks/bin/spec-checks verify` passes.
 
 ## 3. Verify scripts
 

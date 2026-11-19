@@ -1,0 +1,9 @@
+{
+  "name": "torpedo",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.8.1",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

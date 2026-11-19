@@ -1,0 +1,9 @@
+[package]
+name = "torpedo-engine"
+description = "The IBus input method engine of torpedo."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+torpedo-core = { path = "../torpedo-core" }
