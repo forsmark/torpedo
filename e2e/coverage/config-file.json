@@ -1,0 +1,109 @@
+{
+  "The config file location": {
+    "The config file under XDG_CONFIG_HOME": {
+      "unit": "e2e/config-file/engine.test.mjs › The config file under XDG_CONFIG_HOME"
+    },
+    "The default location": {
+      "unit": "e2e/config-file/rules.test.mjs › The default location"
+    }
+  },
+  "A missing config file means defaults": {
+    "No config file": {
+      "unit": "e2e/config-file/engine.test.mjs › No config file"
+    }
+  },
+  "A bad config file never stops typing": {
+    "A broken file at start": {
+      "unit": "e2e/config-file/engine.test.mjs › A broken file at start"
+    },
+    "A bad value at start": {
+      "unit": "e2e/config-file/engine.test.mjs › A bad value at start"
+    },
+    "A broken file after a good one": {
+      "unit": "e2e/config-file/engine.test.mjs › A broken file after a good one"
+    }
+  },
+  "The engine logs a bad config file": {
+    "The log of a bad trigger": {
+      "unit": "e2e/config-file/engine.test.mjs › The log of a bad trigger"
+    }
+  },
+  "Unknown keys are ignored": {
+    "A key from a later version": {
+      "unit": "e2e/config-file/engine.test.mjs › A key from a later version"
+    }
+  },
+  "The trigger value": {
+    "Two semicolons": {
+      "unit": "e2e/config-file/rules.test.mjs › Two semicolons"
+    },
+    "One colon": {
+      "unit": "e2e/config-file/rules.test.mjs › One colon"
+    },
+    "A trigger with a letter": {
+      "unit": "e2e/config-file/rules.test.mjs › A trigger with a letter"
+    },
+    "A trigger with a query sign": {
+      "unit": "e2e/config-file/rules.test.mjs › A trigger with a query sign"
+    },
+    "A trigger with a space": {
+      "unit": "e2e/config-file/rules.test.mjs › A trigger with a space"
+    },
+    "A trigger of four characters": {
+      "unit": "e2e/config-file/rules.test.mjs › A trigger of four characters"
+    },
+    "An empty trigger": {
+      "unit": "e2e/config-file/rules.test.mjs › An empty trigger"
+    },
+    "A trigger that is not a string": {
+      "unit": "e2e/config-file/rules.test.mjs › A trigger that is not a string"
+    }
+  },
+  "Alias names": {
+    "A name with a plus sign": {
+      "unit": "e2e/config-file/rules.test.mjs › A name with a plus sign"
+    },
+    "A name with a space": {
+      "unit": "e2e/config-file/rules.test.mjs › A name with a space"
+    },
+    "Two names that differ in case": {
+      "unit": "e2e/config-file/rules.test.mjs › Two names that differ in case"
+    }
+  },
+  "Alias texts": {
+    "A text emoji": {
+      "unit": "e2e/config-file/rules.test.mjs › A text emoji"
+    },
+    "An empty text": {
+      "unit": "e2e/config-file/rules.test.mjs › An empty text"
+    },
+    "A text of 17 code points": {
+      "unit": "e2e/config-file/rules.test.mjs › A text of 17 code points"
+    },
+    "A text with a line break": {
+      "unit": "e2e/config-file/rules.test.mjs › A text with a line break"
+    },
+    "A text that is not a string": {
+      "unit": "e2e/config-file/rules.test.mjs › A text that is not a string"
+    }
+  },
+  "The engine reads a changed config file": {
+    "A new alias when a search opens": {
+      "unit": "e2e/config-file/engine.test.mjs › A new alias when a search opens"
+    },
+    "A new trigger after focus-in": {
+      "unit": "e2e/config-file/engine.test.mjs › A new trigger after focus-in"
+    },
+    "A deleted config file": {
+      "unit": "e2e/config-file/engine.test.mjs › A deleted config file"
+    }
+  },
+  "A new trigger applies from the next search": {
+    "The trigger changes as a search opens": {
+      "unit": "e2e/config-file/engine.test.mjs › The trigger changes as a search opens"
+    },
+    "The new trigger after the search": {
+      "unit": "e2e/config-file/engine.test.mjs › The new trigger after the search"
+    }
+  }
+}

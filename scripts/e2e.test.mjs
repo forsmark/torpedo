@@ -25,7 +25,7 @@ describe('the scenario test files', () => {
 });
 
 describe('the engine build before the scenario tests', () => {
-  it('builds the release binary of the engine', () => {
-    assert.deepEqual(BUILD, ['cargo', ['build', '--release', '-p', 'torpedo-engine']]);
+  it('builds the release binaries of the engine and the settings window', () => {
+    assert.deepEqual(BUILD, ['cargo', ['build', '--release', '-p', 'torpedo-engine', '-p', 'torpedo-settings']]);
   });
 });

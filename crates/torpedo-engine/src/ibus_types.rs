@@ -92,6 +92,36 @@ pub fn lookup_table(
     ))
 }
 
+/// IBusProperty type NORMAL: a menu item that the user activates.
+pub const PROP_TYPE_NORMAL: u32 = 0;
+/// IBusProperty state UNCHECKED.
+pub const PROP_STATE_UNCHECKED: u32 = 0;
+
+/// An IBusPropList: `(sa{sv}av)`.
+pub fn prop_list(props: Vec<Value<'static>>) -> Value<'static> {
+    Value::from(("IBusPropList".to_string(), Attachments::new(), props))
+}
+
+/// An IBusProperty of type NORMAL, sensitive, visible and unchecked, with no
+/// sub-properties: `(sa{sv}suvsvbbuvv)`. The fields are key, type, label,
+/// icon, tooltip, sensitive, visible, state, sub-properties and symbol.
+pub fn property(key: &str, label: &str, icon: &str, tooltip: &str) -> Value<'static> {
+    Value::from((
+        "IBusProperty".to_string(),
+        Attachments::new(),
+        key.to_string(),
+        PROP_TYPE_NORMAL,
+        text(label),
+        icon.to_string(),
+        text(tooltip),
+        true,
+        true,
+        PROP_STATE_UNCHECKED,
+        prop_list(vec![]),
+        text(""),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -167,5 +197,17 @@ mod tests {
             panic!()
         };
         assert_eq!(attr.fields()[5], Value::U32(3));
+    }
+
+    #[test]
+    fn property_has_the_ibus_signature() {
+        let p = property("k", "Label", "icon", "tip");
+        assert_eq!(p.value_signature().to_string(), "(sa{sv}suvsvbbuvv)");
+        let list = prop_list(vec![p]);
+        assert_eq!(list.value_signature().to_string(), "(sa{sv}av)");
+        assert_eq!(
+            tree(&list),
+            "(s,a{sv},[v<(s,a{sv},s,u,v<(s,a{sv},s,v<(s,a{sv},[])>)>,s,v<(s,a{sv},s,v<(s,a{sv},[])>)>,b,b,u,v<(s,a{sv},[])>,v<(s,a{sv},s,v<(s,a{sv},[])>)>)>])"
+        );
     }
 }

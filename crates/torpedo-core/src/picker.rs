@@ -6,11 +6,14 @@
 //! the table of what each key does in each state.
 
 use crate::boundary::Context;
+use crate::config::{Config, is_query_char};
 use crate::emoji::{EmojiIndex, Match};
 use crate::keys::{self, Accent};
 
-/// The trigger when no config gives another.
-pub const DEFAULT_TRIGGER: &str = "::";
+pub use crate::config::DEFAULT_TRIGGER;
+/// The character that commits an exact shortcode or alias, whatever the
+/// trigger is.
+pub const CLOSING_CHAR: char = ':';
 /// Candidates per page of the candidate list.
 pub const PAGE_SIZE: usize = 9;
 
@@ -41,10 +44,15 @@ pub struct Outcome {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum State {
     Idle,
-    /// A proper prefix of the trigger is held.
-    Prefix(String),
-    /// The trigger is held with a query.
+    /// A proper prefix of `trigger` is held. The prefix keeps the trigger it
+    /// was typed toward, so a config change cannot cut it short.
+    Prefix {
+        held: String,
+        trigger: Vec<char>,
+    },
+    /// The trigger is held with a query. `trigger` is the trigger as typed.
     Search {
+        trigger: String,
         query: String,
         matches: Vec<Match>,
         cursor: usize,
@@ -63,15 +71,13 @@ struct Step {
 /// The inline picker for one engine.
 pub struct Picker {
     trigger: Vec<char>,
+    config: Config,
     index: &'static EmojiIndex,
+    opened: bool,
     state: State,
     context: Context,
     shown_preedit: Option<String>,
     shown_candidates: Option<(Vec<String>, usize)>,
-}
-
-fn is_query_char(c: char) -> bool {
-    c.is_ascii_alphanumeric() || matches!(c, '_' | '+' | '-')
 }
 
 fn is_enter_or_tab(keyval: u32) -> bool {
@@ -82,15 +88,17 @@ fn is_enter_or_tab(keyval: u32) -> bool {
 }
 
 impl Picker {
-    /// A picker with this trigger over this emoji data.
-    pub fn new(trigger: &str, index: &'static EmojiIndex) -> Picker {
+    /// A picker with this config over this emoji data.
+    pub fn new(config: Config, index: &'static EmojiIndex) -> Picker {
         assert!(
-            !trigger.is_empty(),
+            !config.trigger.is_empty(),
             "the trigger has at least one character"
         );
         Picker {
-            trigger: trigger.chars().collect(),
+            trigger: config.trigger.chars().collect(),
+            config,
             index,
+            opened: false,
             state: State::Idle,
             context: Context::default(),
             shown_preedit: None,
@@ -98,17 +106,59 @@ impl Picker {
         }
     }
 
-    /// A picker with the default trigger over gemoji.
+    /// A picker with the default config over gemoji.
     pub fn with_defaults() -> Picker {
-        Picker::new(DEFAULT_TRIGGER, EmojiIndex::gemoji())
+        Picker::new(Config::default(), EmojiIndex::gemoji())
     }
 
-    fn trigger_text(&self) -> String {
-        self.trigger.iter().collect()
+    /// Use another config from now on. Held text keeps the trigger it was
+    /// typed with, and an open query is searched again with the new aliases.
+    pub fn set_config(&mut self, config: Config) -> Outcome {
+        if config.trigger.is_empty() {
+            return Outcome::default();
+        }
+        self.trigger = config.trigger.chars().collect();
+        self.config = config;
+        if let State::Search {
+            query,
+            matches,
+            cursor,
+            ..
+        } = &mut self.state
+        {
+            *matches = self.index.search_with(query, &self.config.aliases);
+            *cursor = 0;
+        }
+        self.finish(Step::default())
+    }
+
+    /// The config in use.
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+
+    /// Whether the last key press opened a search.
+    pub fn search_opened(&self) -> bool {
+        self.opened
+    }
+
+    fn search(&self, query: &str) -> Vec<Match> {
+        self.index.search_with(query, &self.config.aliases)
+    }
+
+    fn open_search(&mut self, trigger: String) {
+        self.opened = true;
+        self.state = State::Search {
+            trigger,
+            query: String::new(),
+            matches: Vec::new(),
+            cursor: 0,
+        };
     }
 
     /// A key press or release.
     pub fn key(&mut self, keyval: u32, state: u32) -> Outcome {
+        self.opened = false;
         if keys::is_release(state) || keys::is_modifier_key(keyval) {
             return Outcome::default();
         }
@@ -116,12 +166,15 @@ impl Picker {
         let current = std::mem::replace(&mut self.state, State::Idle);
         match current {
             State::Idle => self.idle_key(keyval, state, &mut step),
-            State::Prefix(held) => self.prefix_key(held, keyval, state, &mut step),
+            State::Prefix { held, trigger } => {
+                self.prefix_key(held, trigger, keyval, state, &mut step)
+            }
             State::Search {
+                trigger,
                 query,
                 matches,
                 cursor,
-            } => self.search_key(query, matches, cursor, keyval, state, &mut step),
+            } => self.search_key(trigger, query, matches, cursor, keyval, state, &mut step),
             State::Dead(accent) => self.dead_key(accent, keyval, state, &mut step),
         }
         self.finish(step)
@@ -216,15 +269,14 @@ impl Picker {
         }
         match keys::char_of(keyval) {
             Some(c) if c == self.trigger[0] && self.context.at_boundary() => {
-                self.state = if self.trigger.len() == 1 {
-                    State::Search {
-                        query: String::new(),
-                        matches: Vec::new(),
-                        cursor: 0,
-                    }
+                if self.trigger.len() == 1 {
+                    self.open_search(c.to_string());
                 } else {
-                    State::Prefix(c.to_string())
-                };
+                    self.state = State::Prefix {
+                        held: c.to_string(),
+                        trigger: self.trigger.clone(),
+                    };
+                }
                 step.consumed = true;
             }
             Some(c) => self.pass_char(c, step),
@@ -232,7 +284,14 @@ impl Picker {
         }
     }
 
-    fn prefix_key(&mut self, mut held: String, keyval: u32, state: u32, step: &mut Step) {
+    fn prefix_key(
+        &mut self,
+        mut held: String,
+        trigger: Vec<char>,
+        keyval: u32,
+        state: u32,
+        step: &mut Step,
+    ) {
         if keys::has_pass_through_modifier(state) {
             self.commit(&held, step);
             return self.pass_other(step);
@@ -240,23 +299,19 @@ impl Picker {
         if keyval == keys::BACKSPACE {
             held.pop();
             if !held.is_empty() {
-                self.state = State::Prefix(held);
+                self.state = State::Prefix { held, trigger };
             }
             step.consumed = true;
             return;
         }
-        let next = self.trigger[held.chars().count()];
+        let next = trigger[held.chars().count()];
         if keys::char_of(keyval) == Some(next) {
             held.push(next);
-            self.state = if held.chars().count() == self.trigger.len() {
-                State::Search {
-                    query: String::new(),
-                    matches: Vec::new(),
-                    cursor: 0,
-                }
+            if held.chars().count() == trigger.len() {
+                self.open_search(held);
             } else {
-                State::Prefix(held)
-            };
+                self.state = State::Prefix { held, trigger };
+            }
             step.consumed = true;
             return;
         }
@@ -264,8 +319,10 @@ impl Picker {
         self.idle_key(keyval, state, step);
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn search_key(
         &mut self,
+        trigger: String,
         mut query: String,
         matches: Vec<Match>,
         cursor: usize,
@@ -273,7 +330,7 @@ impl Picker {
         state: u32,
         step: &mut Step,
     ) {
-        let plain = format!("{}{}", self.trigger_text(), query);
+        let plain = format!("{trigger}{query}");
         let has_list = !matches.is_empty();
         if keys::has_pass_through_modifier(state) {
             self.commit(&plain, step);
@@ -287,8 +344,9 @@ impl Picker {
         match keyval {
             keys::BACKSPACE => {
                 if query.pop().is_some() {
-                    let matches = self.index.search(&query);
+                    let matches = self.search(&query);
                     self.state = State::Search {
+                        trigger,
                         query,
                         matches,
                         cursor: 0,
@@ -306,6 +364,7 @@ impl Picker {
                 let last = matches.len() as isize - 1;
                 let cursor = (cursor as isize + delta).clamp(0, last) as usize;
                 self.state = State::Search {
+                    trigger,
                     query,
                     matches,
                     cursor,
@@ -322,21 +381,22 @@ impl Picker {
         match keys::char_of(keyval) {
             Some(c) if is_query_char(c) => {
                 query.push(c);
-                let matches = self.index.search(&query);
+                let matches = self.search(&query);
                 if matches.is_empty() {
-                    let plain = format!("{}{}", self.trigger_text(), query);
+                    let plain = format!("{trigger}{query}");
                     self.commit(&plain, step);
                 } else {
                     self.state = State::Search {
+                        trigger,
                         query,
                         matches,
                         cursor: 0,
                     };
                 }
             }
-            Some(':') if self.index.exact(&query).is_some() => {
-                let emoji = self.index.exact(&query).unwrap_or_default().to_string();
-                self.commit(&emoji, step);
+            Some(CLOSING_CHAR) if !query.is_empty() && self.exact(&query).is_some() => {
+                let text = self.exact(&query).unwrap_or_default();
+                self.commit(&text, step);
             }
             Some(_) => {
                 self.commit(&plain, step);
@@ -347,6 +407,10 @@ impl Picker {
                 self.pass_other(step);
             }
         }
+    }
+
+    fn exact(&self, query: &str) -> Option<String> {
+        self.index.exact_with(query, &self.config.aliases)
     }
 
     fn dead_key(&mut self, accent: Accent, keyval: u32, state: u32, step: &mut Step) {
@@ -393,14 +457,15 @@ impl Picker {
     fn wanted(&self) -> (Option<String>, Option<(Vec<String>, usize)>) {
         match &self.state {
             State::Idle => (None, None),
-            State::Prefix(held) => (Some(held.clone()), None),
+            State::Prefix { held, .. } => (Some(held.clone()), None),
             State::Dead(accent) => (Some(accent.spacing.to_string()), None),
             State::Search {
+                trigger,
                 query,
                 matches,
                 cursor,
             } => {
-                let preedit = format!("{}{}", self.trigger_text(), query);
+                let preedit = format!("{trigger}{query}");
                 let list = (!matches.is_empty()).then(|| {
                     let items = matches
                         .iter()
@@ -477,7 +542,13 @@ mod tests {
 
         fn with_trigger(trigger: &str) -> Rig {
             Rig {
-                picker: Picker::new(trigger, EmojiIndex::gemoji()),
+                picker: Picker::new(
+                    Config {
+                        trigger: trigger.to_string(),
+                        aliases: Vec::new(),
+                    },
+                    EmojiIndex::gemoji(),
+                ),
                 app: App::default(),
                 last: Outcome::default(),
                 state: 0,
@@ -1009,5 +1080,166 @@ mod tests {
         let mut r = Rig::with_trigger(";;;");
         r.typed(";;x");
         assert_eq!(r.app.text, ";;x");
+    }
+
+    fn config(trigger: &str, aliases: &[(&str, &str)]) -> Config {
+        Config {
+            trigger: trigger.to_string(),
+            aliases: aliases
+                .iter()
+                .map(|(n, t)| crate::config::Alias {
+                    name: n.to_string(),
+                    text: t.to_string(),
+                })
+                .collect(),
+        }
+    }
+
+    impl Rig {
+        fn with_config(c: Config) -> Rig {
+            let mut r = Rig::new();
+            r.picker = Picker::new(c, EmojiIndex::gemoji());
+            r
+        }
+
+        fn surrounding(&mut self, text: &str) -> &mut Rig {
+            let n = text.chars().count() as u32;
+            self.picker.surrounding_text(text, n, n);
+            self
+        }
+    }
+
+    #[test]
+    fn other_triggers_count_only_at_a_boundary() {
+        for t in [":", ";;", ":;:"] {
+            let mut r = Rig::with_trigger(t);
+            r.surrounding("std");
+            r.typed(t);
+            assert_eq!(r.app.text, t, "{t}");
+            assert_eq!(r.preedit(), None, "{t}");
+        }
+    }
+
+    #[test]
+    fn other_triggers_open_a_search_and_close_with_a_colon() {
+        for t in [":", ";;", ":;:"] {
+            let mut r = Rig::with_trigger(t);
+            r.typed(t);
+            assert_eq!(r.preedit().as_deref(), Some(t), "{t}");
+            r.typed("fire:");
+            assert_eq!(r.app.text, "🔥", "{t}");
+        }
+    }
+
+    #[test]
+    fn other_triggers_hold_a_prefix_and_backspace_drops_it() {
+        let mut r = Rig::with_trigger(";;");
+        r.typed(";");
+        assert_eq!(r.preedit().as_deref(), Some(";"));
+        assert_eq!(r.app.text, "");
+        r.key(BACKSPACE);
+        assert!(r.last.consumed);
+        assert_eq!(r.preedit(), None);
+        assert_eq!(r.app.text, "");
+        assert!(r.app.passed.is_empty());
+    }
+
+    #[test]
+    fn other_triggers_escape_commits_the_plain_text() {
+        let mut r = Rig::with_trigger(":;:");
+        r.typed(":;:fi");
+        r.key(ESCAPE);
+        assert_eq!(r.app.text, ":;:fi");
+    }
+
+    #[test]
+    fn two_colons_pass_with_another_trigger() {
+        let mut r = Rig::with_trigger(";;");
+        r.typed("::fire");
+        assert_eq!(r.app.text, "::fire");
+        assert_eq!(r.preedit(), None);
+    }
+
+    #[test]
+    fn a_colon_commits_an_exact_alias() {
+        let mut r = Rig::with_config(config("::", &[("lgtm", "👍")]));
+        r.typed("::LGTM:");
+        assert_eq!(r.app.text, "👍");
+    }
+
+    #[test]
+    fn enter_commits_the_whole_text_of_an_alias() {
+        let shrug = "¯\\_(ツ)_/¯";
+        let mut r = Rig::with_config(config("::", &[("shrug", shrug)]));
+        r.typed("::shrug");
+        assert_eq!(r.list().unwrap().0[0], format!("{shrug} shrug"));
+        r.key(RETURN);
+        assert_eq!(r.app.text, shrug);
+    }
+
+    #[test]
+    fn an_alias_named_like_a_shortcode_wins() {
+        let mut r = Rig::with_config(config("::", &[("fire", "🚒")]));
+        r.typed("::fire:");
+        assert_eq!(r.app.text, "🚒");
+    }
+
+    #[test]
+    fn a_new_config_keeps_the_held_prefix() {
+        let mut r = Rig::with_trigger(":;:");
+        r.typed(":;");
+        r.picker.set_config(config(";", &[]));
+        assert_eq!(r.preedit().as_deref(), Some(":;"));
+        r.typed(":fire:");
+        assert_eq!(r.app.text, "🔥");
+    }
+
+    #[test]
+    fn a_new_config_keeps_the_typed_trigger_of_a_search() {
+        let mut r = Rig::with_trigger("::");
+        r.typed("::fi");
+        r.picker.set_config(config(";;;", &[]));
+        assert_eq!(r.preedit().as_deref(), Some("::fi"));
+        r.key(ESCAPE);
+        assert_eq!(r.app.text, "::fi");
+        r.typed(" ;;;fire:");
+        assert_eq!(r.app.text, "::fi 🔥");
+    }
+
+    #[test]
+    fn a_shorter_trigger_during_a_prefix() {
+        let mut r = Rig::with_trigger(";;;");
+        r.typed(";;");
+        r.picker.set_config(config(":", &[]));
+        r.typed(";");
+        assert_eq!(r.preedit().as_deref(), Some(";;;"));
+    }
+
+    #[test]
+    fn a_new_config_searches_an_open_query_again() {
+        let mut r = Rig::with_trigger("::");
+        r.typed("::lg");
+        assert!(r.list().is_some());
+        let out = r.picker.set_config(config("::", &[("lgtm", "👍")]));
+        assert!(
+            out.actions
+                .iter()
+                .any(|a| matches!(a, Action::ShowCandidates { .. }))
+        );
+        assert_eq!(r.list().unwrap().0[0], "👍 lgtm");
+    }
+
+    #[test]
+    fn search_opened_marks_the_key_that_completes_the_trigger() {
+        let mut r = Rig::with_trigger("::");
+        r.typed(":");
+        assert!(!r.picker.search_opened());
+        r.typed(":");
+        assert!(r.picker.search_opened());
+        r.typed("f");
+        assert!(!r.picker.search_opened());
+        let mut one = Rig::with_trigger(":");
+        one.typed(":");
+        assert!(one.picker.search_opened());
     }
 }

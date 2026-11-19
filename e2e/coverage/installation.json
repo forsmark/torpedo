@@ -1,26 +1,37 @@
 {
   "Install copies the engine binary": {
-    "The binary is installed": { "unit": "e2e/installation.test.mjs › The binary is installed" },
-    "The default prefix": { "unit": "e2e/installation.test.mjs › The default prefix" }
+    "The binary is installed": {"unit": "e2e/installation.test.mjs › The binary is installed"},
+    "The default prefix": {"unit": "e2e/installation.test.mjs › The default prefix"}
   },
   "Install writes the component file": {
-    "The component file": { "unit": "e2e/installation.test.mjs › The component file" },
-    "The component file goes through sudo": { "unit": "e2e/installation.test.mjs › The component file goes through sudo" },
-    "The default component folder": { "unit": "e2e/installation.test.mjs › The default component folder" }
+    "The component file": {"unit": "e2e/installation.test.mjs › The component file"},
+    "The component file names the settings window": {"unit": "e2e/installation.test.mjs › The component file names the settings window"},
+    "The component file goes through sudo": {"unit": "e2e/installation.test.mjs › The component file goes through sudo"},
+    "The default component folder": {"unit": "e2e/installation.test.mjs › The default component folder"}
   },
   "The scripts never restart IBus": {
-    "Install runs no ibus command": { "unit": "e2e/installation.test.mjs › Install runs no ibus command" },
-    "Uninstall runs no ibus command": { "unit": "e2e/installation.test.mjs › Uninstall runs no ibus command" }
+    "Install runs no ibus command": {"unit": "e2e/installation.test.mjs › Install runs no ibus command"},
+    "Uninstall runs no ibus command": {"unit": "e2e/installation.test.mjs › Uninstall runs no ibus command"}
   },
   "The scripts never change input sources": {
-    "Install changes no setting": { "unit": "e2e/installation.test.mjs › Install changes no setting" },
-    "Uninstall changes no setting": { "unit": "e2e/installation.test.mjs › Uninstall changes no setting" }
+    "Install changes no setting": {"unit": "e2e/installation.test.mjs › Install changes no setting"},
+    "Uninstall changes no setting": {"unit": "e2e/installation.test.mjs › Uninstall changes no setting"}
   },
   "Install prints the next steps": {
-    "The next steps after install": { "unit": "e2e/installation.test.mjs › The next steps after install" }
+    "The next steps after install": {"unit": "e2e/installation.test.mjs › The next steps after install"},
+    "The sudo copy in the next steps": {"unit": "e2e/installation.test.mjs › The sudo copy in the next steps"},
+    "The settings window in the next steps": {"unit": "e2e/installation.test.mjs › The settings window in the next steps"}
   },
   "Uninstall removes what install added": {
-    "Uninstall after install": { "unit": "e2e/installation.test.mjs › Uninstall after install" },
-    "The next steps after uninstall": { "unit": "e2e/installation.test.mjs › The next steps after uninstall" }
+    "Uninstall after install": {"unit": "e2e/installation.test.mjs › Uninstall after install"},
+    "Uninstall removes the desktop file": {"unit": "e2e/installation.test.mjs › Uninstall removes the desktop file"},
+    "The next steps after uninstall": {"unit": "e2e/installation.test.mjs › The next steps after uninstall"}
+  },
+  "Install copies the settings window": {
+    "The settings window is installed": {"unit": "e2e/installation.test.mjs › The settings window is installed"}
+  },
+  "Install adds the settings desktop file": {
+    "The desktop file": {"unit": "e2e/installation.test.mjs › The desktop file"},
+    "The desktop file goes without sudo": {"unit": "e2e/installation.test.mjs › The desktop file goes without sudo"}
   }
 }

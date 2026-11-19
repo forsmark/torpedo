@@ -7,10 +7,10 @@ import assert from 'node:assert/strict';
 import { after, before, beforeEach } from 'node:test';
 import { openSession } from '../harness/session.mjs';
 
-export function usePicker() {
+export function usePicker(options = {}) {
   const t = {};
   before(async () => {
-    t.session = await openSession();
+    t.session = await openSession(options);
   });
   after(async () => {
     await t.session?.close();

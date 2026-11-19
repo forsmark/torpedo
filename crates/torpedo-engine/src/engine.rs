@@ -4,13 +4,19 @@
 //! Each engine object owns a `Picker` and turns its actions into IBus
 //! signals, in order, before it answers the key.
 
+use std::ffi::OsString;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU32, Ordering};
 
+use torpedo_core::config::default_config_path;
+use torpedo_core::emoji::EmojiIndex;
 use torpedo_core::picker::{Action, Outcome, PAGE_SIZE, Picker};
 use zbus::object_server::SignalEmitter;
 use zbus::zvariant::{OwnedObjectPath, Value};
 use zbus::{fdo, interface};
 
+use crate::config_watch::ConfigWatch;
 use crate::ibus_types::{self, ORIENTATION_VERTICAL, PREEDIT_CLEAR, PREEDIT_COMMIT};
 
 /// The engine name in the component file.
@@ -22,6 +28,61 @@ pub fn debug(message: impl AsRef<str>) {
     if std::env::var_os("TORPEDO_DEBUG").is_some() {
         eprintln!("[torpedo] {}", message.as_ref());
     }
+}
+
+fn log(message: String) {
+    debug(message);
+}
+
+/// The key of the property that opens the settings window.
+pub const SETTINGS_PROPERTY: &str = "torpedo-settings";
+/// The variable that names another settings command.
+pub const SETTINGS_COMMAND_VAR: &str = "TORPEDO_SETTINGS_COMMAND";
+/// The settings window's file name, next to the engine.
+pub const SETTINGS_BINARY: &str = "torpedo-settings";
+
+/// The settings command: `TORPEDO_SETTINGS_COMMAND` when it is set and not
+/// empty, else `torpedo-settings` in the folder of the engine binary.
+pub fn settings_command(
+    env: impl Fn(&str) -> Option<OsString>,
+    exe: Option<&Path>,
+) -> Option<PathBuf> {
+    match env(SETTINGS_COMMAND_VAR) {
+        Some(v) if !v.is_empty() => Some(PathBuf::from(v)),
+        _ => exe?.parent().map(|d| d.join(SETTINGS_BINARY)),
+    }
+}
+
+/// Start the settings command without a shell, and reap it on a thread.
+fn start_settings() {
+    let exe = std::env::current_exe().ok();
+    let Some(cmd) = settings_command(|k| std::env::var_os(k), exe.as_deref()) else {
+        debug("settings: no command");
+        return;
+    };
+    debug(format!("settings: starting {}", cmd.display()));
+    match Command::new(&cmd)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .spawn()
+    {
+        Ok(mut child) => {
+            std::thread::spawn(move || {
+                let _ = child.wait();
+            });
+        }
+        Err(e) => debug(format!("settings: cannot start {}: {e}", cmd.display())),
+    }
+}
+
+/// The property list with the one settings item.
+fn settings_properties() -> Value<'static> {
+    ibus_types::prop_list(vec![ibus_types::property(
+        SETTINGS_PROPERTY,
+        "Torpedo settings",
+        "preferences-system",
+        "Open the Torpedo settings window",
+    )])
 }
 
 /// The text of an IBusText that arrives as a `v`.
@@ -39,13 +100,36 @@ fn ibus_text_string(value: &Value<'_>) -> Option<String> {
 /// One input method engine, as IBus sees it.
 pub struct Engine {
     picker: Picker,
+    watch: ConfigWatch,
 }
 
 impl Engine {
     pub fn new() -> Engine {
+        let mut watch = ConfigWatch::new(default_config_path(), log);
+        watch.check();
         Engine {
-            picker: Picker::with_defaults(),
+            picker: Picker::new(watch.config().clone(), EmojiIndex::gemoji()),
+            watch,
         }
+    }
+
+    /// Read the config file again when it changed, and hand a new config to
+    /// the picker.
+    fn reload(&mut self) -> Outcome {
+        match self.watch.check() {
+            Some(config) => self.picker.set_config(config),
+            None => Outcome::default(),
+        }
+    }
+
+    /// Focus came in: drop the state, read a changed config file, and show
+    /// the settings item in the input source menu.
+    async fn focused(&mut self, em: &SignalEmitter<'_>) -> fdo::Result<()> {
+        Self::apply(em, self.picker.focus_in()).await?;
+        Self::apply(em, self.reload()).await?;
+        Self::register_properties(em, settings_properties())
+            .await
+            .map_err(|e| fdo::Error::Failed(e.to_string()))
     }
 
     async fn emit(em: &SignalEmitter<'_>, outcome: &Outcome) -> zbus::Result<()> {
@@ -107,7 +191,10 @@ impl Engine {
         state: u32,
         #[zbus(signal_emitter)] em: SignalEmitter<'_>,
     ) -> fdo::Result<bool> {
-        let outcome = self.picker.key(keyval, state);
+        let mut outcome = self.picker.key(keyval, state);
+        if self.picker.search_opened() {
+            outcome.actions.extend(self.reload().actions);
+        }
         debug(format!(
             "key {keyval:#x} code {keycode} state {state:#x} -> {:?} consumed {}",
             outcome.actions, outcome.consumed
@@ -128,7 +215,7 @@ impl Engine {
 
     async fn focus_in(&mut self, #[zbus(signal_emitter)] em: SignalEmitter<'_>) -> fdo::Result<()> {
         debug("focus in");
-        Self::apply(&em, self.picker.focus_in()).await
+        self.focused(&em).await
     }
 
     async fn focus_in_id(
@@ -137,7 +224,7 @@ impl Engine {
         _client: &str,
         #[zbus(signal_emitter)] em: SignalEmitter<'_>,
     ) -> fdo::Result<()> {
-        Self::apply(&em, self.picker.focus_in()).await
+        self.focused(&em).await
     }
 
     async fn focus_out(
@@ -212,7 +299,12 @@ impl Engine {
         debug(format!("capabilities {caps:#x}"));
     }
 
-    fn property_activate(&self, _name: &str, _state: u32) {}
+    fn property_activate(&self, name: &str, state: u32) {
+        debug(format!("property activate {name} {state}"));
+        if name == SETTINGS_PROPERTY {
+            start_settings();
+        }
+    }
 
     fn property_show(&self, _name: &str) {}
 
@@ -260,6 +352,12 @@ impl Engine {
 
     #[zbus(signal)]
     async fn hide_lookup_table(em: &SignalEmitter<'_>) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn register_properties(em: &SignalEmitter<'_>, props: Value<'_>) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn update_property(em: &SignalEmitter<'_>, prop: Value<'_>) -> zbus::Result<()>;
 
     #[zbus(signal)]
     async fn forward_key_event(
@@ -331,5 +429,33 @@ mod tests {
     fn reads_the_text_of_an_ibus_text() {
         let v = Value::new(ibus_types::text("hello "));
         assert_eq!(ibus_text_string(&v).as_deref(), Some("hello "));
+    }
+
+    #[test]
+    fn the_settings_command_comes_from_the_variable_first() {
+        let exe = Path::new("/p/lib/torpedo/ibus-engine-torpedo");
+        let set = |k: &str| (k == SETTINGS_COMMAND_VAR).then(|| OsString::from("/stub"));
+        assert_eq!(
+            settings_command(set, Some(exe)),
+            Some(PathBuf::from("/stub"))
+        );
+        let empty = |k: &str| (k == SETTINGS_COMMAND_VAR).then(OsString::new);
+        assert_eq!(
+            settings_command(empty, Some(exe)),
+            Some(PathBuf::from("/p/lib/torpedo/torpedo-settings"))
+        );
+        assert_eq!(
+            settings_command(|_| None, Some(exe)),
+            Some(PathBuf::from("/p/lib/torpedo/torpedo-settings"))
+        );
+        assert_eq!(settings_command(|_| None, None), None);
+    }
+
+    #[test]
+    fn the_settings_property_list_has_one_item() {
+        assert_eq!(
+            settings_properties().value_signature().to_string(),
+            "(sa{sv}av)"
+        );
     }
 }

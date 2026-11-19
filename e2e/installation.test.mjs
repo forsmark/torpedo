@@ -72,6 +72,9 @@ describe('installation', () => {
   let uninstallOut;
   let installCalls;
   let installed;
+  let settings;
+  let desktop;
+  let desktopPath;
   let xml;
 
   before(() => {
@@ -81,6 +84,14 @@ describe('installation', () => {
     installCalls = calls(box);
     const binary = join(env.PREFIX, 'lib', 'torpedo', 'ibus-engine-torpedo');
     installed = { binary, exists: existsSync(binary), mode: existsSync(binary) ? statSync(binary).mode : 0 };
+    const settingsPath = join(env.PREFIX, 'lib', 'torpedo', 'torpedo-settings');
+    settings = {
+      path: settingsPath,
+      exists: existsSync(settingsPath),
+      mode: existsSync(settingsPath) ? statSync(settingsPath).mode : 0,
+    };
+    desktopPath = join(env.PREFIX, 'share', 'applications', 'ibus-setup-torpedo.desktop');
+    desktop = readFileSync(desktopPath, 'utf8');
     xml = readFileSync(join(env.COMPONENT_DIR, 'torpedo.xml'), 'utf8');
     rmSync(box.log, { force: true });
     uninstallOut = runScript(box, 'uninstall.sh', { env });
@@ -100,6 +111,27 @@ describe('installation', () => {
     assert.equal(xml.match(/<engine>/g).length, 1);
   });
 
+  it('The component file names the settings window', () => {
+    assert.ok(settings.path.startsWith('/'));
+    assert.match(xml, new RegExp(`<engine>[\\s\\S]*<setup>${settings.path}</setup>[\\s\\S]*</engine>`));
+  });
+
+  it('The settings window is installed', () => {
+    assert.ok(settings.exists);
+    assert.ok(settings.mode & 0o100, 'executable');
+  });
+
+  it('The desktop file', () => {
+    assert.match(desktop, /^\[Desktop Entry\]$/m);
+    assert.match(desktop, /^Name=Torpedo Settings$/m);
+    assert.match(desktop, new RegExp(`^Exec=${settings.path}$`, 'm'));
+  });
+
+  it('The desktop file goes without sudo', () => {
+    const sudo = installCalls.filter((c) => c.startsWith('sudo '));
+    assert.ok(sudo.every((c) => !c.includes('.desktop')), sudo.join('\n'));
+  });
+
   it('The component file goes through sudo', () => {
     const sudo = installCalls.filter((c) => c.startsWith('sudo '));
     assert.equal(sudo.length, 1);
@@ -115,11 +147,24 @@ describe('installation', () => {
   });
 
   it('The next steps after install', () => {
-    const tail = installOut.trim().split('\n').slice(-6).join('\n');
-    assert.match(tail, /ibus restart/);
-    assert.match(tail, /GNOME Settings.*add Torpedo/);
-    assert.match(tail, /Keep Danish .* fallback/);
-    assert.ok(tail.indexOf('ibus restart') < tail.indexOf('GNOME Settings'));
+    const steps = installOut.slice(installOut.lastIndexOf('Next steps:'));
+    const restart = steps.indexOf('ibus restart');
+    const add = steps.search(/GNOME Settings.*add Torpedo/);
+    const danish = steps.search(/Keep Danish .* fallback/);
+    assert.ok(restart > 0 && add > restart && danish > add, steps);
+  });
+
+  it('The sudo copy in the next steps', () => {
+    assert.match(installOut, /The component file is the one file that needs sudo/);
+  });
+
+  it('The settings window in the next steps', () => {
+    const paragraphs = installOut.trim().split('\n\n');
+    const last = paragraphs.at(-1);
+    assert.match(last, /Torpedo Settings/);
+    assert.match(last, /app\s+launcher/);
+    assert.match(last, /GNOME Settings/);
+    assert.match(last, /input source menu/);
   });
 
   it('Uninstall runs no ibus command', () => {
@@ -134,6 +179,10 @@ describe('installation', () => {
     assert.equal(existsSync(join(env.PREFIX, 'lib', 'torpedo')), false);
     assert.equal(existsSync(join(env.COMPONENT_DIR, 'torpedo.xml')), false);
     assert.ok(calls(box).some((c) => c.startsWith('sudo rm -f ')), 'the component file goes through sudo');
+  });
+
+  it('Uninstall removes the desktop file', () => {
+    assert.equal(existsSync(desktopPath), false);
   });
 
   it('The next steps after uninstall', () => {

@@ -38,6 +38,9 @@ for var in ("IBUS_ADDRESS_FILE", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_
         refuse("%s is not under %s" % (var, RUN))
 if "IBUS_ADDRESS" in os.environ:
     refuse("IBUS_ADDRESS is set")
+for var in ("DISPLAY", "WAYLAND_DISPLAY"):
+    if os.environ.get(var):
+        refuse("%s is set, and a settings window could reach the owner's display" % var)
 if not os.access(ENGINE, os.X_OK):
     refuse("TORPEDO_ENGINE is not an executable: %r" % ENGINE)
 
@@ -176,12 +179,47 @@ if not wait_for(bus.is_connected, 10):
     sys.stderr.write("driver: cannot connect to the private daemon\n")
     sys.exit(1)
 
-# A panel service, so that a test can click a candidate. Only the owner of
-# org.freedesktop.IBus.Panel can send CandidateClicked.
-panel = IBus.PanelService(connection=bus.get_connection(), object_path=IBus.PATH_PANEL)
+events = []
+
+
+def prop_text(t):
+    return t.get_text() if t is not None else ""
+
+
+class Panel(IBus.PanelService):
+    """The panel records the property list that the engine registers.
+
+    PyGObject offers no register-properties signal on PanelService, only the
+    virtual method.
+    """
+
+    def do_register_properties(self, props):
+        items = []
+        i = 0
+        while True:
+            p = props.get(i)
+            if p is None:
+                break
+            items.append({
+                "key": p.get_key(),
+                "type": int(p.get_prop_type()),
+                "label": prop_text(p.get_label()),
+                "icon": p.get_icon(),
+                "tooltip": prop_text(p.get_tooltip()),
+                "sensitive": bool(p.get_sensitive()),
+                "visible": bool(p.get_visible()),
+                "state": int(p.get_state()),
+            })
+            i += 1
+        events.append({"type": "properties", "items": items})
+
+
+# A panel service, so that a test can click a candidate and activate a
+# property. Only the owner of org.freedesktop.IBus.Panel can send
+# CandidateClicked and PropertyActivate.
+panel = Panel(connection=bus.get_connection(), object_path=IBus.PATH_PANEL)
 bus.request_name(IBus.SERVICE_PANEL, 0)
 
-events = []
 ctx = None
 contexts = []
 CAPS = (IBus.Capabilite.PREEDIT_TEXT | IBus.Capabilite.LOOKUP_TABLE
@@ -371,6 +409,9 @@ def handle(cmd):
         ok = bus.set_global_engine(cmd["name"])
         pump(0.3)
         return {"ok": bool(ok), "events": take()}
+    if c == "property_activate":
+        panel.property_activate(cmd["name"], cmd.get("state", 0))
+        return {"ok": True, "events": take()}
     if c == "click":
         panel.candidate_clicked(cmd["index"], cmd.get("button", 1), cmd.get("state", 0))
         return {"ok": True, "events": take()}
