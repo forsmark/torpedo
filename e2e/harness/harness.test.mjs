@@ -5,14 +5,52 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { existsSync, readFileSync } from 'node:fs';
-import { liveBusListing, openSession, privateEnv } from './session.mjs';
+import { liveBusListing, openSession, privateEnv, usageFileOf } from './session.mjs';
+import { sandbox, settingsEnv } from './settings.mjs';
 
 describe('the private IBus session', () => {
   it('keeps every IBus and XDG path in its run folder', () => {
     const env = privateEnv('/tmp/tpd-x', { IBUS_ADDRESS: 'unix:path=/live', HOME: '/home/someone' });
     assert.equal(env.IBUS_ADDRESS, undefined);
-    for (const k of ['IBUS_ADDRESS_FILE', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_DATA_HOME']) {
+    for (const k of ['IBUS_ADDRESS_FILE', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME']) {
       assert.ok(env[k].startsWith('/tmp/tpd-x/'), k);
+    }
+  });
+
+  it('refuses a usage file outside the run folder', () => {
+    assert.throws(() => privateEnv('/tmp/tpd-x', { HOME: '/home/someone' }, { XDG_STATE_HOME: '/home/someone/.local/state' }), /SAFETY/);
+    assert.throws(() => privateEnv('/tmp/tpd-x', { HOME: '/home/someone' }, { XDG_STATE_HOME: null }), /SAFETY/);
+    assert.throws(() => privateEnv('/tmp/tpd-x', { HOME: '/home/someone' }, { XDG_STATE_HOME: 'relative' }), /SAFETY/);
+    const env = privateEnv('/tmp/tpd-x', { HOME: '/home/someone' }, { XDG_STATE_HOME: null, HOME: '/tmp/tpd-x/home' });
+    assert.equal(usageFileOf(env), '/tmp/tpd-x/home/.local/state/torpedo/usage.toml');
+    assert.equal(usageFileOf(privateEnv('/tmp/tpd-x', {})), '/tmp/tpd-x/state/torpedo/usage.toml');
+  });
+
+  it('gives each settings run a private state folder', () => {
+    const box = sandbox();
+    try {
+      assert.equal(settingsEnv(box).XDG_STATE_HOME, box.state);
+      assert.throws(() => settingsEnv(box, { XDG_STATE_HOME: '/home/someone/.local/state' }), /SAFETY/);
+    } finally {
+      box.remove();
+    }
+  });
+
+  it('writes, reads and removes a private usage file', async () => {
+    const session = await openSession();
+    try {
+      assert.ok(session.usagePath.startsWith(`${session.run}/`));
+      assert.equal(session.readUsage(), null);
+      session.writeUsage([{ text: '👍', score: 2, age: 60 }, { text: '¯\\_(ツ)_/¯' }]);
+      const entries = session.readUsage();
+      assert.equal(entries.length, 2);
+      assert.equal(session.usageOf('👍').score, 2);
+      assert.ok(Math.abs(session.usageOf('👍').last - (Date.now() / 1000 - 60)) < 5);
+      assert.equal(entries[1].text, '¯\\_(ツ)_/¯');
+      session.removeUsage();
+      assert.equal(session.readUsage(), null);
+    } finally {
+      await session.close();
     }
   });
 

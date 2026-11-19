@@ -2,8 +2,8 @@
 
 ## 1. A private state folder for every test
 
-- [ ] 1.1 In `e2e/harness/session.mjs`, make `privateEnv` set `XDG_STATE_HOME` to `<run>/state`, and refuse a session whose `XDG_STATE_HOME` is outside the run folder, or removed while `HOME` is outside it. In `e2e/harness/settings.mjs`, add a `state` folder to `sandbox()`, set `XDG_STATE_HOME` in `settingsEnv`, and add `--set-skin-tone`, `--set-remember-usage` and `--clear-usage` to `ACTIONS`. Verify with new cases in `e2e/harness/harness.test.mjs` for both guards, and that the existing harness tests pass.
-- [ ] 1.2 Add `usageFile`, `writeUsage(entries)`, `readUsage()` and `removeUsage()` to the session, as design.md says, with `readUsage` through Python's `tomllib`. Make `usePicker` remove the usage file before each test. Verify with harness tests that write, read and remove a usage file in a private session.
+- [x] 1.1 In `e2e/harness/session.mjs`, make `privateEnv` set `XDG_STATE_HOME` to `<run>/state`, and refuse a session whose `XDG_STATE_HOME` is outside the run folder, or removed while `HOME` is outside it. In `e2e/harness/settings.mjs`, add a `state` folder to `sandbox()`, set `XDG_STATE_HOME` in `settingsEnv`, and add `--set-skin-tone`, `--set-remember-usage` and `--clear-usage` to `ACTIONS`. Verify with new cases in `e2e/harness/harness.test.mjs` for both guards, and that the existing harness tests pass.
+- [x] 1.2 Add `usageFile`, `writeUsage(entries)`, `readUsage()` and `removeUsage()` to the session, as design.md says, with `readUsage` through Python's `tomllib`. Make `usePicker` remove the usage file before each test. Verify with harness tests that write, read and remove a usage file in a private session.
 
 ## 2. Usage in torpedo-core
 

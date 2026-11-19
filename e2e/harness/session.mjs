@@ -18,13 +18,16 @@
  *
  * close() also fails when ~/.config/ibus/bus/ changed while the session ran.
  *
+ * Usage goes to a private XDG_STATE_HOME in the run folder. privateEnv refuses
+ * an environment that would let the engine write the owner's usage file.
+ *
  * openSession({ config, env, engine }) takes the text of a private config
  * file, more variables for the daemon and the engine (null removes one), and
  * another engine binary. Every session removes DISPLAY and WAYLAND_DISPLAY,
  * and points TORPEDO_SETTINGS_COMMAND at a stub that records each start in
  * <run>/settings-starts, so no test can open a window.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import {
   chmodSync,
   existsSync,
@@ -68,6 +71,31 @@ export const settingsStartsFile = (run) => join(run, 'settings-starts');
 /** The config file of a run. */
 export const configFile = (run) => join(run, 'config', 'torpedo', 'config.toml');
 
+/** The usage file that the engine of an environment uses. */
+export function usageFileOf(env) {
+  const state = env.XDG_STATE_HOME?.startsWith('/') ? env.XDG_STATE_HOME : join(env.HOME, '.local', 'state');
+  return join(state, 'torpedo', 'usage.toml');
+}
+
+/** The text of a usage file. Each entry is { text, score, age }, with age in seconds before now. */
+export function usageText(entries, now = Math.floor(Date.now() / 1000)) {
+  return entries
+    .map(({ text, score = 1, age = 0 }) => `[[used]]\ntext = ${JSON.stringify(text)}\nscore = ${Number(score).toFixed(6)}\nlast = ${now - age}\n`)
+    .join('\n');
+}
+
+/** Parse a usage file with Python's tomllib. Null when it does not exist. */
+export function readTomlFile(path) {
+  if (!existsSync(path)) return null;
+  const r = spawnSync(
+    'python3',
+    ['-I', '-c', 'import json,sys,tomllib; print(json.dumps(tomllib.load(open(sys.argv[1], "rb"))))', path],
+    { encoding: 'utf8' },
+  );
+  if (r.status !== 0) throw new Error(`${path} does not parse: ${r.stderr}`);
+  return JSON.parse(r.stdout);
+}
+
 /**
  * The environment of the private session: IBus and XDG paths in `run`, no
  * display, and a stub settings command. `extra` adds variables, and a null
@@ -86,6 +114,7 @@ export function privateEnv(run, env = process.env, extra = {}) {
     TORPEDO_SETTINGS_COMMAND: settingsStub(run),
     IBUS_ADDRESS_FILE: join(run, 'addr'),
     XDG_CONFIG_HOME: join(run, 'config'),
+    XDG_STATE_HOME: join(run, 'state'),
     XDG_CACHE_HOME: join(run, 'cache'),
     XDG_DATA_HOME: join(run, 'data'),
     GSETTINGS_BACKEND: 'memory',
@@ -94,6 +123,10 @@ export function privateEnv(run, env = process.env, extra = {}) {
   for (const [k, v] of Object.entries(extra)) {
     if (v === null) delete all[k];
     else all[k] = v;
+  }
+  const inRun = (p) => typeof p === 'string' && p.startsWith(`${run}/`);
+  if (all.XDG_STATE_HOME !== undefined ? !inRun(all.XDG_STATE_HOME) : !inRun(all.HOME)) {
+    throw new Error(`SAFETY: the usage file ${usageFileOf(all)} is outside the run folder ${run}`);
   }
   return all;
 }
@@ -113,8 +146,9 @@ export function writeAtomically(path, text) {
 }
 
 export class Session {
-  constructor(child, run, lines, before) {
+  constructor(child, run, lines, before, env = {}) {
     this.child = child;
+    this.env = env;
     this.run = run;
     this.lines = lines;
     this.before = before;
@@ -170,6 +204,32 @@ export class Session {
     rmSync(this.configPath, { force: true });
   }
 
+  /** The private usage file of this session. */
+  get usagePath() {
+    return usageFileOf(this.env);
+  }
+
+  /** Replace the usage file in one step: entries as usageText takes them, or a raw text. */
+  writeUsage(entries) {
+    writeAtomically(this.usagePath, typeof entries === 'string' ? entries : usageText(entries));
+  }
+
+  /** The entries of the usage file, as { text, score, last }, or null when it does not exist. */
+  readUsage() {
+    const doc = readTomlFile(this.usagePath);
+    return doc === null ? null : (doc.used ?? []);
+  }
+
+  /** The entry of `text` in the usage file, or undefined. */
+  usageOf(text) {
+    return (this.readUsage() ?? []).find((e) => e.text === text);
+  }
+
+  /** Delete the usage file. */
+  removeUsage() {
+    rmSync(this.usagePath, { force: true });
+  }
+
   /** How often the stub settings command started. */
   settingsStarts() {
     const f = settingsStartsFile(this.run);
@@ -211,13 +271,20 @@ export async function openSession({ config, env = {}, engine } = {}) {
   recordingStub(settingsStub(run), settingsStartsFile(run));
   if (config !== undefined) writeAtomically(configFile(run), config);
   const extra = engine ? { TORPEDO_ENGINE: engine, ...env } : env;
+  let sessionEnv;
+  try {
+    sessionEnv = privateEnv(run, process.env, extra);
+  } catch (e) {
+    rmSync(run, { recursive: true, force: true });
+    throw e;
+  }
   const child = spawn(
     'dbus-run-session',
     ['--config-file', join(HERE, 'session.conf'), '--', 'python3', '-I', join(HERE, 'driver.py')],
-    { env: privateEnv(run, process.env, extra), stdio: ['pipe', 'pipe', 'pipe'], detached: true },
+    { env: sessionEnv, stdio: ['pipe', 'pipe', 'pipe'], detached: true },
   );
   const lines = createInterface({ input: child.stdout });
-  const session = new Session(child, run, lines, before);
+  const session = new Session(child, run, lines, before, sessionEnv);
   const ready = await session.next();
   if (!ready.ready) throw new Error(`driver did not start: ${session.stderr}`);
   session.address = ready.address;
