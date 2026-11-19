@@ -22,8 +22,8 @@
 
 ## 4. Docs
 
-- [ ] 4.1 List the new commands in `AGENTS.md`: `source ~/.cargo/env`, the cargo fmt, clippy, check and test commands, `node scripts/e2e.mjs`, and the heavy-lock wrapper for cargo build and test run by hand. Replace the note that the first change sets up the stack. Say that scenario tests are `node --test` files under `e2e/`, and that Rust `#[test]`s cover internals. Verify that each listed command runs as written.
-- [ ] 4.2 Add the section "Safety: never touch the live IBus session" to `AGENTS.md`. It says why: the owner's desktop types through IBus, and a mistake stops all typing. Its rules:
+- [x] 4.1 List the new commands in `AGENTS.md`: `source ~/.cargo/env`, the cargo fmt, clippy, check and test commands, `node scripts/e2e.mjs`, and the heavy-lock wrapper for cargo build and test run by hand. Replace the note that the first change sets up the stack. Say that scenario tests are `node --test` files under `e2e/`, and that Rust `#[test]`s cover internals. Verify that each listed command runs as written.
+- [x] 4.2 Add the section "Safety: never touch the live IBus session" to `AGENTS.md`. It says why: the owner's desktop types through IBus, and a mistake stops all typing. Its rules:
   - Never change gsettings, such as `org.gnome.desktop.input-sources`.
   - Never run `ibus restart`, `ibus engine`, `ibus write-cache` or any other `ibus` command against the live daemon.
   - Never write to `~/.config/ibus`, `~/.cache/ibus`, `~/.config/environment.d`, `~/.config/systemd` or `/usr`.
@@ -32,7 +32,7 @@
   - Installing onto the live desktop happens only when the owner asks.
 
   Verify that the section holds each rule.
-- [ ] 4.3 Update the stack line in `AGENTS.md` and the context in `openspec/config.yaml` to name the e2e tests with `node --test` beside `cargo test`. Verify that `openspec validate --all --strict` still passes.
+- [x] 4.3 Update the stack line in `AGENTS.md` and the context in `openspec/config.yaml` to name the e2e tests with `node --test` beside `cargo test`. Verify that `openspec validate --all --strict` still passes.
 
 ## 5. Integration
 
