@@ -7,6 +7,8 @@
 //!
 //! ```toml
 //! trigger = "::"
+//! skin_tone = "medium"
+//! remember_usage = true
 //!
 //! [aliases]
 //! lgtm = "👍"
@@ -21,6 +23,8 @@ use std::path::{Path, PathBuf};
 
 use toml_edit::{DocumentMut, Item, Table, TableLike, value};
 
+use crate::tone::{SKIN_TONE_KEY, SkinTone, check_skin_tone};
+
 /// The trigger when the config file sets none.
 pub const DEFAULT_TRIGGER: &str = "::";
 /// The most characters a trigger may have.
@@ -31,6 +35,8 @@ pub const MAX_ALIAS_TEXT_CHARS: usize = 16;
 pub const TRIGGER_KEY: &str = "trigger";
 /// The table of the aliases.
 pub const ALIASES_KEY: &str = "aliases";
+/// The key that turns usage on and off.
+pub const REMEMBER_USAGE_KEY: &str = "remember_usage";
 
 /// A character the query accepts: ASCII letters, digits, `_`, `+` and `-`.
 pub fn is_query_char(c: char) -> bool {
@@ -52,6 +58,9 @@ pub struct Config {
     pub trigger: String,
     /// Sorted by lower-case name, which is the tie order of the ranking.
     pub aliases: Vec<Alias>,
+    pub skin_tone: SkinTone,
+    /// Whether the engine records usage and ranks by it.
+    pub remember_usage: bool,
 }
 
 impl Default for Config {
@@ -59,6 +68,8 @@ impl Default for Config {
         Config {
             trigger: DEFAULT_TRIGGER.to_string(),
             aliases: Vec::new(),
+            skin_tone: SkinTone::None,
+            remember_usage: true,
         }
     }
 }
@@ -216,6 +227,33 @@ pub fn parse(text: &str) -> Result<Config, Vec<Problem>> {
         }
     }
 
+    if let Some(item) = doc.get(SKIN_TONE_KEY) {
+        let line = line_of(text, item.span());
+        let checked = match item.as_str() {
+            Some(s) => check_skin_tone(s),
+            None => Err("the skin tone is not a string".into()),
+        };
+        match checked {
+            Ok(tone) => config.skin_tone = tone,
+            Err(message) => problems.push(Problem {
+                key: SKIN_TONE_KEY.into(),
+                line,
+                message,
+            }),
+        }
+    }
+
+    if let Some(item) = doc.get(REMEMBER_USAGE_KEY) {
+        match item.as_bool() {
+            Some(b) => config.remember_usage = b,
+            None => problems.push(Problem {
+                key: REMEMBER_USAGE_KEY.into(),
+                line: line_of(text, item.span()),
+                message: "remember_usage is not true or false".into(),
+            }),
+        }
+    }
+
     if let Some(item) = doc.get(ALIASES_KEY) {
         match table_like(item) {
             None => problems.push(Problem {
@@ -267,6 +305,15 @@ pub fn parse(text: &str) -> Result<Config, Vec<Problem>> {
     }
     config.aliases.sort_by_key(|a| a.name.to_lowercase());
     Ok(config)
+}
+
+/// The values the settings window edits, for [`ConfigDocument::with_values`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Values {
+    pub trigger: String,
+    pub aliases: Vec<Alias>,
+    pub skin_tone: SkinTone,
+    pub remember_usage: bool,
 }
 
 /// A config file to edit, with its comments and unknown keys kept.
@@ -324,6 +371,16 @@ impl ConfigDocument {
         self.doc.get(TRIGGER_KEY)?.as_str().map(str::to_string)
     }
 
+    /// The skin tone as written, when it is a known value.
+    pub fn raw_skin_tone(&self) -> Option<SkinTone> {
+        SkinTone::from_config(self.doc.get(SKIN_TONE_KEY)?.as_str()?)
+    }
+
+    /// The value of `remember_usage` as written, when it is a boolean.
+    pub fn raw_remember_usage(&self) -> Option<bool> {
+        self.doc.get(REMEMBER_USAGE_KEY)?.as_bool()
+    }
+
     /// The aliases as written, good or bad, in file order. A text that is not
     /// a string shows as empty.
     pub fn raw_aliases(&self) -> Vec<Alias> {
@@ -376,6 +433,23 @@ impl ConfigDocument {
             }])
         })?;
         self.try_edit(|doc| replace_value(doc, TRIGGER_KEY, trigger))
+    }
+
+    /// Set the skin tone from its config value, such as `medium-light`.
+    pub fn set_skin_tone(&mut self, tone: &str) -> Result<(), Refused> {
+        let tone = check_skin_tone(tone).map_err(|message| {
+            Refused(vec![Problem {
+                key: SKIN_TONE_KEY.into(),
+                line: None,
+                message,
+            }])
+        })?;
+        self.try_edit(|doc| replace_value(doc, SKIN_TONE_KEY, tone.as_str()))
+    }
+
+    /// Turn usage on or off.
+    pub fn set_remember_usage(&mut self, on: bool) -> Result<(), Refused> {
+        self.try_edit(|doc| replace_bool(doc, REMEMBER_USAGE_KEY, on))
     }
 
     /// Add an alias, or change the text of the alias with this name in any
@@ -441,12 +515,26 @@ impl ConfigDocument {
         })
     }
 
-    /// A copy with this trigger and exactly these aliases, unchecked. Aliases
-    /// that keep their name keep their place and comments. Use `save`, which
-    /// checks the whole result, to write it.
-    pub fn with_values(&self, trigger: &str, aliases: &[Alias]) -> ConfigDocument {
+    /// A copy with these values and exactly these aliases, unchecked.
+    /// Aliases that keep their name keep their place and comments. The skin
+    /// tone and `remember_usage` are written only when the file has them or
+    /// they differ from the default. Use `save`, which checks the whole
+    /// result, to write it.
+    pub fn with_values(&self, values: &Values) -> ConfigDocument {
+        let Values {
+            trigger,
+            aliases,
+            skin_tone,
+            remember_usage,
+        } = values;
         let mut doc = self.doc.clone();
         replace_value(&mut doc, TRIGGER_KEY, trigger);
+        if doc.contains_key(SKIN_TONE_KEY) || *skin_tone != SkinTone::None {
+            replace_value(&mut doc, SKIN_TONE_KEY, skin_tone.as_str());
+        }
+        if doc.contains_key(REMEMBER_USAGE_KEY) || !remember_usage {
+            replace_bool(&mut doc, REMEMBER_USAGE_KEY, *remember_usage);
+        }
         let table = ConfigDocument::aliases_mut(&mut doc);
         let gone: Vec<String> = table
             .iter()
@@ -482,6 +570,21 @@ fn set_keeping_decor(item: &mut Item, text: &str) {
     *item = value(text);
     if let (Some(decor), Some(v)) = (decor, item.as_value_mut()) {
         *v.decor_mut() = decor;
+    }
+}
+
+fn replace_bool(doc: &mut DocumentMut, key: &str, on: bool) {
+    match doc.get_mut(key) {
+        Some(item) if item.is_value() => {
+            let decor = item.as_value().map(|v| v.decor().clone());
+            *item = value(on);
+            if let (Some(decor), Some(v)) = (decor, item.as_value_mut()) {
+                *v.decor_mut() = decor;
+            }
+        }
+        _ => {
+            doc.insert(key, value(on));
+        }
     }
 }
 
@@ -682,7 +785,7 @@ mod tests {
 
     #[test]
     fn unknown_keys_and_tables_are_skipped() {
-        let c = parse("skin_tone = \"medium\"\ntrigger = \";;\"\n[recents]\nlast = 1\n").unwrap();
+        let c = parse("theme = \"dark\"\ntrigger = \";;\"\n[later]\nlast = 1\n").unwrap();
         assert_eq!(c.trigger, ";;");
     }
 
@@ -731,11 +834,13 @@ mod tests {
         assert_eq!(config_path(env(&[])), None);
     }
 
-    const KEPT: &str = "# my settings\nskin_tone = \"medium\" # later\ntrigger = \"::\"\n\n[aliases]\n# work\nlgtm = \"👍\"\n\n[recents]\nx = 1\n";
+    const KEPT: &str = "# my settings\ntheme = \"dark\" # later\nskin_tone = \"medium\" # tone\nremember_usage = true # usage\ntrigger = \"::\"\n\n[aliases]\n# work\nlgtm = \"👍\"\n\n[recents]\nx = 1\n";
 
     fn kept(text: &str) {
         assert!(text.contains("# my settings\n"), "{text}");
-        assert!(text.contains("skin_tone = \"medium\" # later"), "{text}");
+        assert!(text.contains("theme = \"dark\" # later"), "{text}");
+        assert!(text.contains(" # tone\n"), "{text}");
+        assert!(text.contains(" # usage\n"), "{text}");
         assert!(text.contains("# work\n"), "{text}");
         assert!(text.contains("[recents]\nx = 1"), "{text}");
     }
@@ -853,9 +958,15 @@ mod tests {
     #[test]
     fn with_values_sets_exactly_these_values_and_keeps_the_rest() {
         let d = ConfigDocument::parse(KEPT).unwrap();
-        let next = d.with_values(
+        let values = |trigger: &str, aliases: Vec<Alias>| Values {
+            trigger: trigger.into(),
+            aliases,
+            skin_tone: SkinTone::Dark,
+            remember_usage: false,
+        };
+        let next = d.with_values(&values(
             ";;",
-            &[
+            vec![
                 Alias {
                     name: "lgtm".into(),
                     text: "✅".into(),
@@ -865,14 +976,79 @@ mod tests {
                     text: "🚀".into(),
                 },
             ],
-        );
+        ));
         kept(&next.text());
         let c = next.config().unwrap();
         assert_eq!(c.trigger, ";;");
         assert_eq!(c.aliases.len(), 2);
-        let none = next.with_values("::", &[]);
+        assert_eq!(c.skin_tone, SkinTone::Dark);
+        assert!(!c.remember_usage);
+        let none = next.with_values(&values("::", vec![]));
         assert!(none.config().unwrap().aliases.is_empty());
-        let bad = d.with_values("ab", &[]);
+        let bad = d.with_values(&values("ab", vec![]));
         assert!(bad.config().is_err());
+    }
+
+    #[test]
+    fn with_values_writes_no_default_the_file_lacks() {
+        let d = ConfigDocument::parse("trigger = \"::\"\n").unwrap();
+        let next = d.with_values(&Values {
+            trigger: "::".into(),
+            aliases: vec![],
+            skin_tone: SkinTone::None,
+            remember_usage: true,
+        });
+        assert!(!next.text().contains("skin_tone"), "{}", next.text());
+        assert!(!next.text().contains("remember_usage"), "{}", next.text());
+    }
+
+    #[test]
+    fn the_skin_tone_value() {
+        assert_eq!(
+            parse("skin_tone = \"medium-dark\"").unwrap().skin_tone,
+            SkinTone::MediumDark
+        );
+        assert_eq!(parse("").unwrap().skin_tone, SkinTone::None);
+        for bad in [
+            "skin_tone = \"Medium\"",
+            "skin_tone = 3",
+            "skin_tone = \"\"",
+        ] {
+            let p = parse(bad).unwrap_err();
+            assert_eq!(p[0].key, "skin_tone", "{bad}");
+            assert_eq!(p[0].line, Some(1));
+        }
+    }
+
+    #[test]
+    fn the_remember_usage_value() {
+        assert!(!parse("remember_usage = false").unwrap().remember_usage);
+        assert!(parse("").unwrap().remember_usage);
+        for bad in ["remember_usage = \"no\"", "remember_usage = 0"] {
+            assert_eq!(parse(bad).unwrap_err()[0].key, "remember_usage", "{bad}");
+        }
+    }
+
+    #[test]
+    fn set_skin_tone_and_remember_usage() {
+        let mut d = ConfigDocument::parse(KEPT).unwrap();
+        d.set_skin_tone("medium-light").unwrap();
+        d.set_remember_usage(false).unwrap();
+        kept(&d.text());
+        let c = d.config().unwrap();
+        assert_eq!(c.skin_tone, SkinTone::MediumLight);
+        assert!(!c.remember_usage);
+        assert_eq!(d.raw_skin_tone(), Some(SkinTone::MediumLight));
+        assert_eq!(d.raw_remember_usage(), Some(false));
+        let before = d.text();
+        assert_eq!(d.set_skin_tone("purple").unwrap_err().0[0].key, "skin_tone");
+        assert_eq!(d.text(), before);
+        let mut empty = ConfigDocument::parse("").unwrap();
+        empty.set_skin_tone("dark").unwrap();
+        empty.set_remember_usage(true).unwrap();
+        assert_eq!(
+            empty.text(),
+            "skin_tone = \"dark\"\nremember_usage = true\n"
+        );
     }
 }

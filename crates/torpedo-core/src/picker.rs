@@ -5,10 +5,14 @@
 //! knows nothing of D-Bus. The design of the change `add-emoji-engine` holds
 //! the table of what each key does in each state.
 
+use std::collections::HashMap;
+
 use crate::boundary::Context;
 use crate::config::{Config, is_query_char};
 use crate::emoji::{EmojiIndex, Match};
 use crate::keys::{self, Accent};
+use crate::tone;
+use crate::usage::Usage;
 
 pub use crate::config::DEFAULT_TRIGGER;
 /// The character that commits an exact shortcode or alias, whatever the
@@ -39,6 +43,9 @@ pub struct Outcome {
     pub actions: Vec<Action>,
     /// Whether the engine used the key. False lets the key reach the app.
     pub consumed: bool,
+    /// The emoji, without its skin tone, or the alias text that this event
+    /// committed from a search. None for plain text.
+    pub used: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,6 +73,7 @@ enum State {
 struct Step {
     commit: String,
     consumed: bool,
+    used: Option<String>,
 }
 
 /// The inline picker for one engine.
@@ -73,6 +81,8 @@ pub struct Picker {
     trigger: Vec<char>,
     config: Config,
     index: &'static EmojiIndex,
+    /// The usage key of each text with usage.
+    ranking: HashMap<String, f64>,
     opened: bool,
     state: State,
     context: Context,
@@ -98,6 +108,7 @@ impl Picker {
             trigger: config.trigger.chars().collect(),
             config,
             index,
+            ranking: HashMap::new(),
             opened: false,
             state: State::Idle,
             context: Context::default(),
@@ -126,7 +137,28 @@ impl Picker {
             ..
         } = &mut self.state
         {
-            *matches = self.index.search_with(query, &self.config.aliases);
+            *matches = self
+                .index
+                .search_ranked(query, &self.config.aliases, &self.ranking);
+            *cursor = 0;
+        }
+        self.finish(Step::default())
+    }
+
+    /// Rank by this usage from now on. An open query is searched again.
+    /// The engine passes no usage when `remember_usage` is off.
+    pub fn set_usage(&mut self, usage: &Usage) -> Outcome {
+        self.ranking = usage.ranking();
+        if let State::Search {
+            query,
+            matches,
+            cursor,
+            ..
+        } = &mut self.state
+        {
+            *matches = self
+                .index
+                .search_ranked(query, &self.config.aliases, &self.ranking);
             *cursor = 0;
         }
         self.finish(Step::default())
@@ -143,7 +175,25 @@ impl Picker {
     }
 
     fn search(&self, query: &str) -> Vec<Match> {
-        self.index.search_with(query, &self.config.aliases)
+        self.index
+            .search_ranked(query, &self.config.aliases, &self.ranking)
+    }
+
+    /// The text of a match as the candidate list shows it and a commit gives
+    /// it: in the skin tone when the match takes one.
+    fn shown(&self, m: &Match) -> String {
+        if m.toned {
+            tone::apply(&m.emoji, self.config.skin_tone)
+        } else {
+            m.emoji.clone()
+        }
+    }
+
+    /// Commit a match, and note its untoned text as used.
+    fn commit_match(&mut self, m: &Match, step: &mut Step) {
+        let text = self.shown(m);
+        self.commit(&text, step);
+        step.used = Some(m.emoji.clone());
     }
 
     fn open_search(&mut self, trigger: String) {
@@ -209,10 +259,9 @@ impl Picker {
         } = &self.state
         {
             let at = cursor - cursor % PAGE_SIZE + index as usize;
-            if let Some(m) = matches.get(at) {
-                let emoji = m.emoji.clone();
+            if let Some(m) = matches.get(at).cloned() {
                 self.state = State::Idle;
-                self.commit(&emoji, &mut step);
+                self.commit_match(&m, &mut step);
             }
         }
         self.finish(step)
@@ -372,8 +421,7 @@ impl Picker {
                 return;
             }
             k if is_enter_or_tab(k) && has_list => {
-                let emoji = matches[cursor].emoji.clone();
-                return self.commit(&emoji, step);
+                return self.commit_match(&matches[cursor], step);
             }
             keys::ESCAPE => return self.commit(&plain, step),
             _ => {}
@@ -395,8 +443,9 @@ impl Picker {
                 }
             }
             Some(CLOSING_CHAR) if !query.is_empty() && self.exact(&query).is_some() => {
-                let text = self.exact(&query).unwrap_or_default();
-                self.commit(&text, step);
+                if let Some(m) = self.exact(&query) {
+                    self.commit_match(&m, step);
+                }
             }
             Some(_) => {
                 self.commit(&plain, step);
@@ -409,8 +458,8 @@ impl Picker {
         }
     }
 
-    fn exact(&self, query: &str) -> Option<String> {
-        self.index.exact_with(query, &self.config.aliases)
+    fn exact(&self, query: &str) -> Option<Match> {
+        self.index.exact_match(query, &self.config.aliases)
     }
 
     fn dead_key(&mut self, accent: Accent, keyval: u32, state: u32, step: &mut Step) {
@@ -469,7 +518,7 @@ impl Picker {
                 let list = (!matches.is_empty()).then(|| {
                     let items = matches
                         .iter()
-                        .map(|m| format!("{} {}", m.emoji, m.shortcode))
+                        .map(|m| format!("{} {}", self.shown(m), m.shortcode))
                         .collect();
                     (items, *cursor)
                 });
@@ -512,6 +561,7 @@ impl Picker {
         Outcome {
             actions,
             consumed: step.consumed,
+            used: step.used,
         }
     }
 }
@@ -533,6 +583,7 @@ mod tests {
         app: App,
         last: Outcome,
         state: u32,
+        used: Vec<String>,
     }
 
     impl Rig {
@@ -545,17 +596,21 @@ mod tests {
                 picker: Picker::new(
                     Config {
                         trigger: trigger.to_string(),
-                        aliases: Vec::new(),
+                        ..Config::default()
                     },
                     EmojiIndex::gemoji(),
                 ),
                 app: App::default(),
                 last: Outcome::default(),
                 state: 0,
+                used: Vec::new(),
             }
         }
 
         fn apply(&mut self, out: Outcome, keyval: Option<u32>) {
+            if let Some(u) = &out.used {
+                self.used.push(u.clone());
+            }
             for a in &out.actions {
                 if let Action::Commit(t) = a {
                     self.app.text.push_str(t);
@@ -1092,6 +1147,7 @@ mod tests {
                     text: t.to_string(),
                 })
                 .collect(),
+            ..Config::default()
         }
     }
 
@@ -1241,5 +1297,96 @@ mod tests {
         let mut one = Rig::with_trigger(":");
         one.typed(":");
         assert!(one.picker.search_opened());
+    }
+
+    // Usage and the skin tone
+
+    fn toned(tone: crate::tone::SkinTone, aliases: &[(&str, &str)]) -> Rig {
+        Rig::with_config(Config {
+            skin_tone: tone,
+            ..config("::", aliases)
+        })
+    }
+
+    fn first(r: &Rig) -> String {
+        r.list().expect("a candidate list").0[0].clone()
+    }
+
+    #[test]
+    fn each_commit_path_notes_the_used_text() {
+        let mut r = Rig::new();
+        r.typed("::fire").key(RETURN);
+        r.typed(" ::fire").key(TAB);
+        r.typed(" ::fire:");
+        r.typed(" ::fire");
+        let out = r.picker.candidate_clicked(0);
+        r.apply(out, None);
+        assert_eq!(r.app.text, "🔥 🔥 🔥 🔥");
+        assert_eq!(r.used, ["🔥", "🔥", "🔥", "🔥"]);
+    }
+
+    #[test]
+    fn plain_text_notes_nothing() {
+        let mut r = Rig::new();
+        r.typed("::fi").key(ESCAPE);
+        r.typed(" ::fireq");
+        r.typed(" ::fi").press(0x61, CONTROL_MASK);
+        r.typed(" ::fir:");
+        r.typed(" ::fi ");
+        assert!(r.used.is_empty(), "{:?}", r.used);
+    }
+
+    #[test]
+    fn an_alias_commit_notes_its_text() {
+        let mut r = Rig::with_config(config("::", &[("lgtm", "👍")]));
+        r.typed("::lgtm:");
+        assert_eq!(r.used, ["👍"]);
+    }
+
+    #[test]
+    fn the_tone_shows_and_commits_but_the_bare_emoji_is_used() {
+        let mut r = toned(crate::tone::SkinTone::Medium, &[]);
+        r.typed("::wave");
+        assert_eq!(first(&r), "👋🏽 wave");
+        r.key(RETURN);
+        r.typed(" ::+1:");
+        r.typed(" ::fire:");
+        assert_eq!(r.app.text, "👋🏽 👍🏽 🔥");
+        assert_eq!(r.used, ["👋", "👍", "🔥"]);
+    }
+
+    #[test]
+    fn an_alias_never_takes_the_tone() {
+        let mut r = toned(
+            crate::tone::SkinTone::Dark,
+            &[("hi", "👋"), ("wave_hi", "👋")],
+        );
+        r.typed("::hi:");
+        assert_eq!(r.app.text, "👋");
+        r.typed(" ::wave");
+        assert_eq!(first(&r), "👋🏿 wave");
+        assert!(!r.list().unwrap().0.contains(&"👋 wave_hi".to_string()));
+        r.key(ESCAPE);
+        r.typed(" ::wave_h");
+        assert_eq!(first(&r), "👋 wave_hi");
+    }
+
+    #[test]
+    fn set_usage_re_sorts_an_open_search() {
+        let mut r = Rig::new();
+        r.typed("::thumbs");
+        assert_eq!(first(&r), "👍 thumbsup");
+        let mut usage = Usage::new();
+        usage.record("👎", 1_000);
+        let out = r.picker.set_usage(&usage);
+        r.apply(out, None);
+        assert_eq!(first(&r), "👎 thumbsdown");
+        assert!(matches!(
+            r.last.actions.last(),
+            Some(Action::ShowCandidates { .. })
+        ));
+        let out = r.picker.set_usage(&Usage::new());
+        r.apply(out, None);
+        assert_eq!(first(&r), "👍 thumbsup");
     }
 }

@@ -4,6 +4,6 @@
 
 gemoji is under the MIT license, which `LICENSE` holds. Keep the license file beside the data.
 
-Torpedo reads the `emoji` and `aliases` fields. Each alias is a shortcode.
+Torpedo reads the `emoji`, `aliases` and `skin_tones` fields. Each alias is a shortcode. `skin_tones` marks the emoji that take the skin tone of the config file.
 
 To update the data, copy both files from a newer commit and change the commit and date here.
