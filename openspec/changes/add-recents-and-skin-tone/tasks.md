@@ -27,7 +27,7 @@
 ## 6. The engine
 
 - [x] 6.1 Move the fingerprint into its own module and add `UsageWatch`: check at start, on FocusIn and FocusInId and when a search opens, an empty usage for a missing or bad file, a log once under `TORPEDO_DEBUG`, the fingerprint of its own write, and the rename of a broken file to `usage.toml.broken` before the next write replaces it. Verify with unit tests in a temp folder for a new file, a deleted file, a broken file, the rename over an older `usage.toml.broken`, no rename of a missing file, and the engine's own write.
-- [ ] 6.2 Record each outcome with `used` when `remember_usage` is true, with `SystemTime::now()`, save it, and pass the usage to the picker. Pass an empty usage when `remember_usage` is false. Verify with `cargo test -p torpedo-engine` and the e2e tests of group 8.
+- [x] 6.2 Record each outcome with `used` when `remember_usage` is true, with `SystemTime::now()`, save it, and pass the usage to the picker. Pass an empty usage when `remember_usage` is false. Verify with `cargo test -p torpedo-engine` and the e2e tests of group 8.
 
 ## 7. The settings command and window
 
@@ -37,11 +37,11 @@
 
 ## 8. Scenario tests
 
-- [ ] 8.1 Add `e2e/usage/*.test.mjs` with one test for each scenario of `usage`, and `e2e/coverage/usage.json`. Verify with `node scripts/e2e.mjs` and `node tools/spec-checks/bin/spec-checks coverage`.
-- [ ] 8.2 Add `e2e/skin-tone/*.test.mjs` with one test for each scenario of `skin-tone` but the oracle, and `e2e/coverage/skin-tone.json` with the `none` entry that design.md gives. Verify as in 8.1.
-- [ ] 8.3 Add the tests of inline-picker *Used emoji come first within a rank*, and check that the *Ranking* tests still hold with the fixture's empty usage. Update `e2e/coverage/inline-picker.json`. Verify as in 8.1.
-- [ ] 8.4 Add the tests of config-file *The skin_tone value*, *The remember_usage value* and the defaults, and change *A key from a later version* to `theme` and `[later]`. Update `e2e/coverage/config-file.json`. Verify as in 8.1.
-- [ ] 8.5 Add the tests of the new settings-window scenarios for the flags, change *A comment and an unknown key survive* to `theme = "dark"`, and add the four `none` entries that design.md gives. Update `e2e/coverage/settings-window.json`. Verify as in 8.1.
+- [x] 8.1 Add `e2e/usage/*.test.mjs` with one test for each scenario of `usage`, and `e2e/coverage/usage.json`. Verify with `node scripts/e2e.mjs` and `node tools/spec-checks/bin/spec-checks coverage`.
+- [x] 8.2 Add `e2e/skin-tone/*.test.mjs` with one test for each scenario of `skin-tone` but the oracle, and `e2e/coverage/skin-tone.json` with the `none` entry that design.md gives. Verify as in 8.1.
+- [x] 8.3 Add the tests of inline-picker *Used emoji come first within a rank*, and check that the *Ranking* tests still hold with the fixture's empty usage. Update `e2e/coverage/inline-picker.json`. Verify as in 8.1.
+- [x] 8.4 Add the tests of config-file *The skin_tone value*, *The remember_usage value* and the defaults, and change *A key from a later version* to `theme` and `[later]`. Update `e2e/coverage/config-file.json`. Verify as in 8.1.
+- [x] 8.5 Add the tests of the new settings-window scenarios for the flags, change *A comment and an unknown key survive* to `theme = "dark"`, and add the four `none` entries that design.md gives. Update `e2e/coverage/settings-window.json`. Verify as in 8.1.
 
 ## 9. Integration
 
