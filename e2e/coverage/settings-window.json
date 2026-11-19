@@ -1,0 +1,77 @@
+{
+  "The settings window edits the trigger": {
+    "The trigger field": {
+      "none": "Only a person looking at the window can see what the trigger field shows. No test opens a window, so none reaches the owner's display. The value it shows comes from ConfigDocument::raw_trigger, which Rust tests in torpedo-core cover."
+    }
+  },
+  "The settings window edits the aliases": {
+    "The alias list": {
+      "none": "Only a person looking at the window can see the alias rows. No test opens a window. The rows come from ConfigDocument::raw_aliases, which Rust tests cover."
+    },
+    "Add, change and delete an alias": {
+      "none": "Only a person using the window can add, change and delete rows. No test opens a window. Each step saves through ConfigDocument::with_values and save, which the scenarios under Saving refuses a bad value and Saving keeps what the window does not manage show through the same torpedo-core functions."
+    }
+  },
+  "The settings window shows a bad value at its field": {
+    "A bad trigger in the window": {
+      "none": "Only a person looking at the window can see where the problem shows. No test opens a window. The check is check_values in torpedo-settings, which a Rust test covers, and the rule is config-file's The trigger value."
+    },
+    "A bad value is not written": {
+      "none": "Only a person using the window can apply a field. No test opens a window. That nothing is written while a value is bad is check_values plus save, which Rust tests cover, and Saving a bad alias shows the same refusal through the mode without a window."
+    }
+  },
+  "Saving refuses a bad value": {
+    "Saving a bad trigger": {
+      "unit": "e2e/settings-window/save.test.mjs › Saving a bad trigger"
+    },
+    "Saving a bad alias": {
+      "unit": "e2e/settings-window/save.test.mjs › Saving a bad alias"
+    }
+  },
+  "Saving replaces the file in one step": {
+    "The file is replaced by a rename": {
+      "unit": "e2e/settings-window/save.test.mjs › The file is replaced by a rename"
+    },
+    "A reader never sees part of a file": {
+      "unit": "e2e/settings-window/save.test.mjs › A reader never sees part of a file"
+    }
+  },
+  "Saving keeps what the window does not manage": {
+    "A comment and an unknown key survive": {
+      "unit": "e2e/settings-window/save.test.mjs › A comment and an unknown key survive"
+    }
+  },
+  "Saving creates the config file": {
+    "The first save": {
+      "unit": "e2e/settings-window/save.test.mjs › The first save"
+    }
+  },
+  "The settings command runs without a window": {
+    "Check a good file": {
+      "unit": "e2e/settings-window/save.test.mjs › Check a good file"
+    },
+    "Check a bad file": {
+      "unit": "e2e/settings-window/save.test.mjs › Check a bad file"
+    },
+    "Remove an alias": {
+      "unit": "e2e/settings-window/save.test.mjs › Remove an alias"
+    },
+    "Another config file": {
+      "unit": "e2e/settings-window/save.test.mjs › Another config file"
+    }
+  },
+  "The input source menu opens the settings window": {
+    "The menu item": {
+      "unit": "e2e/settings-window/menu.test.mjs › The menu item"
+    },
+    "The menu item starts the settings command": {
+      "unit": "e2e/settings-window/menu.test.mjs › The menu item starts the settings command"
+    },
+    "The default settings command": {
+      "unit": "e2e/settings-window/menu.test.mjs › The default settings command"
+    },
+    "Typing goes on while the settings command runs": {
+      "unit": "e2e/settings-window/menu.test.mjs › Typing goes on while the settings command runs"
+    }
+  }
+}

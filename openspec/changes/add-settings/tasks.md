@@ -29,14 +29,14 @@
 
 ## 6. Install
 
-- [ ] 6.1 Update `install.sh`: build both binaries, install `torpedo-settings` next to the engine, write `$PREFIX/share/applications/ibus-setup-torpedo.desktop` without sudo, add `<setup>` to the component file, and add the settings paragraph to the next steps. Update `uninstall.sh` to remove the settings binary and the desktop file. Verify with `sh -n` on both, and `./install.sh --dry-run` and `./uninstall.sh --dry-run` with `HOME` in a temp folder.
+- [x] 6.1 Update `install.sh`: build both binaries, install `torpedo-settings` next to the engine, write `$PREFIX/share/applications/ibus-setup-torpedo.desktop` without sudo, add `<setup>` to the component file, and add the settings paragraph to the next steps. Update `uninstall.sh` to remove the settings binary and the desktop file. Verify with `sh -n` on both, and `./install.sh --dry-run` and `./uninstall.sh --dry-run` with `HOME` in a temp folder.
 
 ## 7. Scenario tests
 
-- [ ] 7.1 Add `e2e/config-file/*.test.mjs` with one test for each scenario of `config-file`, through the private daemon with a private config file, or through `torpedo-settings --check` with no display. Add `e2e/coverage/config-file.json`. Verify with `node scripts/e2e.mjs` and `node tools/spec-checks/bin/spec-checks coverage`.
-- [ ] 7.2 Add `e2e/settings-window/*.test.mjs` with one test for each scenario of `settings-window` that a test can show: the save rules through the mode without a window, and the property scenarios through the panel. Add `e2e/coverage/settings-window.json`, with `none` and a reason for the five window-only scenarios that design.md lists. Verify as in 7.1.
-- [ ] 7.3 Add the new `inline-picker` scenarios to `e2e/inline-picker/` (a new `trigger.test.mjs` and `aliases.test.mjs`), and update `e2e/coverage/inline-picker.json` for the renamed requirement *The trigger is configurable* and the new and changed scenarios. Verify as in 7.1.
-- [ ] 7.4 Update `e2e/installation.test.mjs` for the new and changed `installation` scenarios: the settings binary, the desktop file and its name, `<setup>`, no sudo for the desktop file, uninstall of both, the sudo line and the settings paragraph. *The next steps after install* now checks the order of the steps, not the last six lines, because the settings paragraph comes after them. Update `e2e/coverage/installation.json`. Verify as in 7.1.
+- [x] 7.1 Add `e2e/config-file/*.test.mjs` with one test for each scenario of `config-file`, through the private daemon with a private config file, or through `torpedo-settings --check` with no display. Add `e2e/coverage/config-file.json`. Verify with `node scripts/e2e.mjs` and `node tools/spec-checks/bin/spec-checks coverage`.
+- [x] 7.2 Add `e2e/settings-window/*.test.mjs` with one test for each scenario of `settings-window` that a test can show: the save rules through the mode without a window, and the property scenarios through the panel. Add `e2e/coverage/settings-window.json`, with `none` and a reason for the five window-only scenarios that design.md lists. Verify as in 7.1.
+- [x] 7.3 Add the new `inline-picker` scenarios to `e2e/inline-picker/` (a new `trigger.test.mjs` and `aliases.test.mjs`), and update `e2e/coverage/inline-picker.json` for the renamed requirement *The trigger is configurable* and the new and changed scenarios. Verify as in 7.1.
+- [x] 7.4 Update `e2e/installation.test.mjs` for the new and changed `installation` scenarios: the settings binary, the desktop file and its name, `<setup>`, no sudo for the desktop file, uninstall of both, the sudo line and the settings paragraph. *The next steps after install* now checks the order of the steps, not the last six lines, because the settings paragraph comes after them. Update `e2e/coverage/installation.json`. Verify as in 7.1.
 
 ## 8. Words and docs
 

@@ -139,9 +139,18 @@
       "unit": "e2e/inline-picker/boundary.test.mjs › Two emoji in a row"
     }
   },
-  "The trigger is two colons": {
+  "The trigger is configurable": {
     "Two colons open a search": {
-      "unit": "e2e/inline-picker/boundary.test.mjs › Two colons open a search"
+      "unit": "e2e/inline-picker/trigger.test.mjs › Two colons open a search"
+    },
+    "Two semicolons open a search": {
+      "unit": "e2e/inline-picker/trigger.test.mjs › Two semicolons open a search"
+    },
+    "Two colons with another trigger": {
+      "unit": "e2e/inline-picker/trigger.test.mjs › Two colons with another trigger"
+    },
+    "A trigger of one colon": {
+      "unit": "e2e/inline-picker/trigger.test.mjs › A trigger of one colon"
     }
   },
   "A trigger prefix is held": {
@@ -185,11 +194,17 @@
     },
     "A candidate shows its emoji and shortcode": {
       "unit": "e2e/inline-picker/search.test.mjs › A candidate shows its emoji and shortcode"
+    },
+    "A candidate shows its alias": {
+      "unit": "e2e/inline-picker/aliases.test.mjs › A candidate shows its alias"
     }
   },
   "Each emoji appears once": {
     "An emoji with two matching shortcodes": {
       "unit": "e2e/inline-picker/search.test.mjs › An emoji with two matching shortcodes"
+    },
+    "An emoji with a matching shortcode and alias": {
+      "unit": "e2e/inline-picker/aliases.test.mjs › An emoji with a matching shortcode and alias"
     }
   },
   "Ranking": {
@@ -201,6 +216,12 @@
     },
     "Ties keep gemoji's order": {
       "unit": "e2e/inline-picker/search.test.mjs › Ties keep gemoji's order"
+    },
+    "An exact alias before prefix matches": {
+      "unit": "e2e/inline-picker/aliases.test.mjs › An exact alias before prefix matches"
+    },
+    "Aliases first among equal ranks": {
+      "unit": "e2e/inline-picker/aliases.test.mjs › Aliases first among equal ranks"
     }
   },
   "Arrow keys move the selection": {
@@ -260,6 +281,12 @@
     },
     "A colon after a partial shortcode": {
       "unit": "e2e/inline-picker/search-keys.test.mjs › A colon after a partial shortcode"
+    },
+    "A colon after an alias": {
+      "unit": "e2e/inline-picker/aliases.test.mjs › A colon after an alias"
+    },
+    "A colon closes a search of another trigger": {
+      "unit": "e2e/inline-picker/trigger.test.mjs › A colon closes a search of another trigger"
     }
   },
   "Another character closes the search": {
@@ -278,6 +305,9 @@
   "A query with no match ends the search": {
     "No shortcode matches": {
       "unit": "e2e/inline-picker/search-keys.test.mjs › No shortcode matches"
+    },
+    "Only an alias matches": {
+      "unit": "e2e/inline-picker/aliases.test.mjs › Only an alias matches"
     }
   },
   "Held text is never lost": {
@@ -295,6 +325,36 @@
     },
     "Typing after a reset": {
       "unit": "e2e/inline-picker/held-text.test.mjs › Typing after a reset"
+    }
+  },
+  "The trigger rules hold for any trigger": {
+    "Another trigger after a word": {
+      "unit": "e2e/inline-picker/trigger.test.mjs › Another trigger after a word"
+    },
+    "The first character of another trigger is held": {
+      "unit": "e2e/inline-picker/trigger.test.mjs › The first character of another trigger is held"
+    },
+    "Backspace after the first character of another trigger": {
+      "unit": "e2e/inline-picker/trigger.test.mjs › Backspace after the first character of another trigger"
+    }
+  },
+  "Aliases are searched like shortcodes": {
+    "An alias by its prefix": {
+      "unit": "e2e/inline-picker/aliases.test.mjs › An alias by its prefix"
+    },
+    "An alias in upper case": {
+      "unit": "e2e/inline-picker/aliases.test.mjs › An alias in upper case"
+    },
+    "An alias for a text emoji": {
+      "unit": "e2e/inline-picker/aliases.test.mjs › An alias for a text emoji"
+    }
+  },
+  "An alias wins over a shortcode of the same name": {
+    "An alias named fire": {
+      "unit": "e2e/inline-picker/aliases.test.mjs › An alias named fire"
+    },
+    "The shortcode it hides": {
+      "unit": "e2e/inline-picker/aliases.test.mjs › The shortcode it hides"
     }
   }
 }

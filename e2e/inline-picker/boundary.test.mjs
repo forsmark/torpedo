@@ -71,13 +71,6 @@ describe('inline-picker: trigger and boundary', () => {
     assert.equal(t.app.text, '🔥🚀');
   });
 
-  it('Two colons open a search', async () => {
-    await t.app.type('::');
-    assert.equal(t.app.preedit.text, '::');
-    assert.equal(t.app.table, null);
-    assert.equal(t.app.text, '');
-  });
-
   it('The first colon is held', async () => {
     await t.app.type(':');
     assert.equal(t.app.consumed, true);

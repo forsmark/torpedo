@@ -1,7 +1,8 @@
 #!/bin/sh
 # Remove what install.sh added.
 #
-#   ./uninstall.sh            remove the binary and the component file
+#   ./uninstall.sh            remove the binaries, the desktop file and the
+#                             component file
 #   ./uninstall.sh --dry-run  print each step and remove nothing
 #
 # It never restarts IBus and never changes input sources. It takes the same
@@ -13,7 +14,7 @@ for arg in "$@"; do
   case $arg in
     --dry-run) DRY_RUN=1 ;;
     -h | --help)
-      sed -n '2,8s/^# \{0,1\}//p' "$0"
+      sed -n '2,9s/^# \{0,1\}//p' "$0"
       exit 0
       ;;
     *)
@@ -28,6 +29,7 @@ case $PREFIX in /*) ;; *) PREFIX=$(pwd)/$PREFIX ;; esac
 COMPONENT_DIR=${COMPONENT_DIR:-/usr/share/ibus/component}
 SUDO=${SUDO-sudo}
 LIB_DIR=$PREFIX/lib/torpedo
+DESKTOP=$PREFIX/share/applications/ibus-setup-torpedo.desktop
 COMPONENT=$COMPONENT_DIR/torpedo.xml
 
 run() {
@@ -39,7 +41,8 @@ run_sudo() {
   if [ -n "$SUDO" ]; then run $SUDO "$@"; else run "$@"; fi
 }
 
-run rm -f "$LIB_DIR/ibus-engine-torpedo"
+run rm -f "$LIB_DIR/ibus-engine-torpedo" "$LIB_DIR/torpedo-settings"
+run rm -f "$DESKTOP"
 if [ -d "$LIB_DIR" ] || [ "$DRY_RUN" = 1 ]; then
   run rmdir "$LIB_DIR"
 fi
