@@ -28,6 +28,7 @@
   - Never run `ibus restart`, `ibus engine`, `ibus write-cache` or any other `ibus` command against the live daemon.
   - Never write to `~/.config/ibus`, `~/.cache/ibus`, `~/.config/environment.d`, `~/.config/systemd` or `/usr`.
   - Tests run only against a private ibus-daemon inside `dbus-run-session`, with `IBUS_ADDRESS_FILE`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` and `XDG_DATA_HOME` pointing at a temp dir. Without `IBUS_ADDRESS_FILE`, a private daemon overwrites the live address file.
+  - Stop each private ibus-daemon with SIGTERM and wait for it to exit before its `dbus-run-session` ends. Never leave one to die when its bus goes away. A crashed private daemon makes Ubuntu show the owner an "IBus Preferences has closed unexpectedly" crash dialog.
   - Installing onto the live desktop happens only when the owner asks.
 
   Verify that the section holds each rule.
