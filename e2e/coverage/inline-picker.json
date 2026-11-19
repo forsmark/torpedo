@@ -1,0 +1,300 @@
+{
+  "Keys the engine does not use pass through": {
+    "A letter with nothing held passes through": {
+      "unit": "e2e/inline-picker/pass-through.test.mjs › A letter with nothing held passes through"
+    },
+    "A key release passes through": {
+      "unit": "e2e/inline-picker/pass-through.test.mjs › A key release passes through"
+    }
+  },
+  "Ctrl, Alt and Super make a key pass through": {
+    "Ctrl with a letter passes through": {
+      "unit": "e2e/inline-picker/pass-through.test.mjs › Ctrl with a letter passes through"
+    },
+    "Alt with a letter passes through": {
+      "unit": "e2e/inline-picker/pass-through.test.mjs › Alt with a letter passes through"
+    },
+    "Super with a letter passes through": {
+      "unit": "e2e/inline-picker/pass-through.test.mjs › Super with a letter passes through"
+    },
+    "Shift gives the colon of the trigger": {
+      "unit": "e2e/inline-picker/pass-through.test.mjs › Shift gives the colon of the trigger"
+    },
+    "AltGr gives a character": {
+      "unit": "e2e/inline-picker/pass-through.test.mjs › AltGr gives a character"
+    },
+    "Num Lock does not stop the trigger": {
+      "unit": "e2e/inline-picker/pass-through.test.mjs › Num Lock does not stop the trigger"
+    }
+  },
+  "A modifier key alone changes nothing": {
+    "Shift pressed again between the colons": {
+      "unit": "e2e/inline-picker/pass-through.test.mjs › Shift pressed again between the colons"
+    }
+  },
+  "A dead key is held": {
+    "The dead acute key": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › The dead acute key"
+    },
+    "The accent is underlined": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › The accent is underlined"
+    },
+    "An unknown dead key": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › An unknown dead key"
+    }
+  },
+  "A dead key composes with the next character": {
+    "Acute and e": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › Acute and e"
+    },
+    "Diaeresis and u": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › Diaeresis and u"
+    },
+    "Tilde and n": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › Tilde and n"
+    },
+    "Acute and upper case E": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › Acute and upper case E"
+    }
+  },
+  "A dead key alone gives its accent": {
+    "Dead key and space": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › Dead key and space"
+    },
+    "The same dead key twice": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › The same dead key twice"
+    }
+  },
+  "A dead key that does not compose": {
+    "Acute and q": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › Acute and q"
+    }
+  },
+  "A dead key before another key": {
+    "Dead key and Left": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › Dead key and Left"
+    },
+    "Two different dead keys": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › Two different dead keys"
+    },
+    "Backspace after a dead key": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › Backspace after a dead key"
+    },
+    "Shift after a dead key": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › Shift after a dead key"
+    }
+  },
+  "A dead key ends a trigger prefix or a search": {
+    "A dead key while the first colon is held": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › A dead key while the first colon is held"
+    },
+    "A dead key during a search": {
+      "unit": "e2e/inline-picker/dead-keys.test.mjs › A dead key during a search"
+    }
+  },
+  "Held text reaches the app before a key that passes through": {
+    "Ctrl with a letter during a search": {
+      "unit": "e2e/inline-picker/pass-through.test.mjs › Ctrl with a letter during a search"
+    },
+    "An arrow key during a search": {
+      "unit": "e2e/inline-picker/pass-through.test.mjs › An arrow key during a search"
+    }
+  },
+  "The trigger counts only at a boundary": {
+    "A trigger after a word": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › A trigger after a word"
+    },
+    "A trigger after a space": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › A trigger after a space"
+    },
+    "A trigger at the start of the text": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › A trigger at the start of the text"
+    },
+    "A trigger after an emoji": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › A trigger after an emoji"
+    },
+    "A trigger after an opening bracket": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › A trigger after an opening bracket"
+    },
+    "A trigger after an opening quote": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › A trigger after an opening quote"
+    }
+  },
+  "The engine asks every app for surrounding text": {
+    "A second input context is asked": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › A second input context is asked"
+    }
+  },
+  "Without surrounding text the last typed character decides": {
+    "A trigger after a typed letter": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › A trigger after a typed letter"
+    },
+    "A trigger after a typed space": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › A trigger after a typed space"
+    },
+    "A trigger with nothing known": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › A trigger with nothing known"
+    },
+    "Two emoji in a row": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › Two emoji in a row"
+    }
+  },
+  "The trigger is two colons": {
+    "Two colons open a search": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › Two colons open a search"
+    }
+  },
+  "A trigger prefix is held": {
+    "The first colon is held": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › The first colon is held"
+    },
+    "A letter after the first colon": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › A letter after the first colon"
+    }
+  },
+  "Backspace removes a held trigger prefix": {
+    "Backspace after the first colon": {
+      "unit": "e2e/inline-picker/boundary.test.mjs › Backspace after the first colon"
+    }
+  },
+  "The preedit shows the search": {
+    "The preedit of a search": {
+      "unit": "e2e/inline-picker/search.test.mjs › The preedit of a search"
+    }
+  },
+  "Query characters": {
+    "A shortcode with a plus sign": {
+      "unit": "e2e/inline-picker/search.test.mjs › A shortcode with a plus sign"
+    },
+    "A shortcode with digits and underscores": {
+      "unit": "e2e/inline-picker/search.test.mjs › A shortcode with digits and underscores"
+    },
+    "Upper case letters": {
+      "unit": "e2e/inline-picker/search.test.mjs › Upper case letters"
+    }
+  },
+  "The candidate list": {
+    "No candidate list for an empty query": {
+      "unit": "e2e/inline-picker/search.test.mjs › No candidate list for an empty query"
+    },
+    "The candidate list for a query": {
+      "unit": "e2e/inline-picker/search.test.mjs › The candidate list for a query"
+    },
+    "Candidates have no labels": {
+      "unit": "e2e/inline-picker/search.test.mjs › Candidates have no labels"
+    },
+    "A candidate shows its emoji and shortcode": {
+      "unit": "e2e/inline-picker/search.test.mjs › A candidate shows its emoji and shortcode"
+    }
+  },
+  "Each emoji appears once": {
+    "An emoji with two matching shortcodes": {
+      "unit": "e2e/inline-picker/search.test.mjs › An emoji with two matching shortcodes"
+    }
+  },
+  "Ranking": {
+    "Exact before prefix before word prefix": {
+      "unit": "e2e/inline-picker/search.test.mjs › Exact before prefix before word prefix"
+    },
+    "Prefix before substring": {
+      "unit": "e2e/inline-picker/search.test.mjs › Prefix before substring"
+    },
+    "Ties keep gemoji's order": {
+      "unit": "e2e/inline-picker/search.test.mjs › Ties keep gemoji's order"
+    }
+  },
+  "Arrow keys move the selection": {
+    "Down selects the next candidate": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › Down selects the next candidate"
+    },
+    "Up at the first candidate": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › Up at the first candidate"
+    }
+  },
+  "Page keys move by a page": {
+    "Page Down": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › Page Down"
+    },
+    "Page Up after Page Down": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › Page Up after Page Down"
+    }
+  },
+  "Enter and Tab commit the selected emoji": {
+    "Enter commits": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › Enter commits"
+    },
+    "Tab commits": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › Tab commits"
+    }
+  },
+  "A click commits a candidate": {
+    "A click on the first page": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › A click on the first page"
+    },
+    "A click on the second page": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › A click on the second page"
+    }
+  },
+  "Backspace edits the query": {
+    "Backspace removes a query character": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › Backspace removes a query character"
+    },
+    "Backspace with an empty query": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › Backspace with an empty query"
+    },
+    "Backspace to an empty query hides the list": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › Backspace to an empty query hides the list"
+    }
+  },
+  "Escape cancels the search": {
+    "Escape during a search": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › Escape during a search"
+    },
+    "Escape with an empty query": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › Escape with an empty query"
+    }
+  },
+  "A colon after an exact shortcode commits it": {
+    "Slack style": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › Slack style"
+    },
+    "A colon after a partial shortcode": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › A colon after a partial shortcode"
+    }
+  },
+  "Another character closes the search": {
+    "A space closes the search": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › A space closes the search"
+    },
+    "A Danish letter closes the search": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › A Danish letter closes the search"
+    }
+  },
+  "Enter and Tab without a candidate list": {
+    "Enter with an empty query": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › Enter with an empty query"
+    }
+  },
+  "A query with no match ends the search": {
+    "No shortcode matches": {
+      "unit": "e2e/inline-picker/search-keys.test.mjs › No shortcode matches"
+    }
+  },
+  "Held text is never lost": {
+    "Focus moves away during a search": {
+      "unit": "e2e/inline-picker/held-text.test.mjs › Focus moves away during a search"
+    },
+    "The app resets the input context during a search": {
+      "unit": "e2e/inline-picker/held-text.test.mjs › The app resets the input context during a search"
+    },
+    "The engine is switched off during a search": {
+      "unit": "e2e/inline-picker/held-text.test.mjs › The engine is switched off during a search"
+    },
+    "Focus moves away with a held dead key": {
+      "unit": "e2e/inline-picker/held-text.test.mjs › Focus moves away with a held dead key"
+    },
+    "Typing after a reset": {
+      "unit": "e2e/inline-picker/held-text.test.mjs › Typing after a reset"
+    }
+  }
+}

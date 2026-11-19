@@ -2,6 +2,11 @@
 //!
 //! This crate uses no D-Bus and no GTK, so its tests run without a desktop.
 
+pub mod boundary;
+pub mod emoji;
+pub mod keys;
+pub mod picker;
+
 /// The version of torpedo, from the crate's manifest.
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")

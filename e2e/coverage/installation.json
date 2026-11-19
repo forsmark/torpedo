@@ -1,0 +1,26 @@
+{
+  "Install copies the engine binary": {
+    "The binary is installed": { "unit": "e2e/installation.test.mjs › The binary is installed" },
+    "The default prefix": { "unit": "e2e/installation.test.mjs › The default prefix" }
+  },
+  "Install writes the component file": {
+    "The component file": { "unit": "e2e/installation.test.mjs › The component file" },
+    "The component file goes through sudo": { "unit": "e2e/installation.test.mjs › The component file goes through sudo" },
+    "The default component folder": { "unit": "e2e/installation.test.mjs › The default component folder" }
+  },
+  "The scripts never restart IBus": {
+    "Install runs no ibus command": { "unit": "e2e/installation.test.mjs › Install runs no ibus command" },
+    "Uninstall runs no ibus command": { "unit": "e2e/installation.test.mjs › Uninstall runs no ibus command" }
+  },
+  "The scripts never change input sources": {
+    "Install changes no setting": { "unit": "e2e/installation.test.mjs › Install changes no setting" },
+    "Uninstall changes no setting": { "unit": "e2e/installation.test.mjs › Uninstall changes no setting" }
+  },
+  "Install prints the next steps": {
+    "The next steps after install": { "unit": "e2e/installation.test.mjs › The next steps after install" }
+  },
+  "Uninstall removes what install added": {
+    "Uninstall after install": { "unit": "e2e/installation.test.mjs › Uninstall after install" },
+    "The next steps after uninstall": { "unit": "e2e/installation.test.mjs › The next steps after uninstall" }
+  }
+}

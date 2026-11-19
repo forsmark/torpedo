@@ -1,6 +1,8 @@
 node_modules/
 dist/
 coverage/
+# The coverage map of the spec checks is source, not a coverage report.
+!e2e/coverage/
 .turbo/
 *.log
 .env

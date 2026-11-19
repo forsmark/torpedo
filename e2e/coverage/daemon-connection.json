@@ -1,0 +1,14 @@
+{
+  "The engine connects only when IBus starts it": {
+    "Started with --ibus": { "unit": "e2e/daemon-connection.test.mjs › Started with --ibus" },
+    "Started without --ibus": { "unit": "e2e/daemon-connection.test.mjs › Started without --ibus" }
+  },
+  "The engine finds the daemon": {
+    "The address in IBUS_ADDRESS": { "unit": "e2e/daemon-connection.test.mjs › The address in IBUS_ADDRESS" },
+    "The address file in IBUS_ADDRESS_FILE": { "unit": "e2e/daemon-connection.test.mjs › The address file in IBUS_ADDRESS_FILE" },
+    "The default address file": { "unit": "e2e/daemon-connection.test.mjs › The default address file" }
+  },
+  "The engine stops with the daemon": {
+    "The daemon stops": { "unit": "e2e/daemon-connection.test.mjs › The daemon stops" }
+  }
+}
