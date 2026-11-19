@@ -7,16 +7,18 @@ Stack: Rust (stable, via rustup) and Cargo. IBus input method engine over D-Bus 
 ## Layout
 
 - `crates/torpedo-core` is a library for the pure logic: trigger detection, search and config. It uses no D-Bus and no GTK.
-- `crates/torpedo-engine` is the binary of the IBus engine.
+- `crates/torpedo-engine` is the binary of the IBus engine. It reads the config file on focus-in and when a search opens. Its "Torpedo settings" property starts the settings command: `TORPEDO_SETTINGS_COMMAND` when it is set, else `torpedo-settings` next to the engine binary.
+- `crates/torpedo-settings` is the settings window, a GTK4 and libadwaita binary. With `--check`, `--set-trigger`, `--set-alias` or `--remove-alias` it opens no window and needs no display. The config rules it uses live in `torpedo-core`.
 - `e2e/` holds the scenario tests. They are `node --test` files that drive the real engine binary through a private IBus daemon. The coverage map in `e2e/coverage/` links each spec scenario to one of them.
-- `e2e/harness/` runs that daemon. `session.mjs` starts `dbus-run-session` with `session.conf` and runs `driver.py` in it. The driver starts a private ibus-daemon, acts as the IBus client and panel, and answers JSON commands. `app.mjs` folds its events into the app's text. Use `openSession()` and never start an ibus-daemon another way.
+- `e2e/harness/` runs that daemon. `session.mjs` starts `dbus-run-session` with `session.conf` and runs `driver.py` in it. The driver starts a private ibus-daemon, acts as the IBus client and panel, and answers JSON commands. `app.mjs` folds its events into the app's text. Use `openSession()` and never start an ibus-daemon another way. `openSession({ config, env, engine })` writes a private config file, adds variables, and can drive another engine binary. Every session removes `DISPLAY` and `WAYLAND_DISPLAY` and points `TORPEDO_SETTINGS_COMMAND` at a recording stub.
+- `e2e/harness/settings.mjs` runs `torpedo-settings` in its mode without a window, with a private `HOME` and `XDG_CONFIG_HOME` and no display.
 - `docs/ibus-protocol.md` holds what torpedo knows about the IBus protocol.
 - `install.sh` and `uninstall.sh` install the engine for the owner.
 - Rust `#[test]`s cover internals. They map to no scenario.
 
 ## Commands
 
-Rust is installed per user. Run `source ~/.cargo/env` before you call cargo by hand. The verify and e2e scripts find cargo without it.
+Rust is installed per user. Run `source ~/.cargo/env` before you call cargo by hand. The verify and e2e scripts find cargo without it. Building the workspace needs the system packages `libgtk-4-dev` and `libadwaita-1-dev`, for the settings window.
 
 - `node scripts/verify.mjs --affected` runs the checks and the tests that the changes since origin/main can reach. Run it once, at the end of your work, on a clean tree.
 - `node scripts/verify.mjs` runs everything. It runs before a release.
@@ -25,8 +27,8 @@ Rust is installed per user. Run `source ~/.cargo/env` before you call cargo by h
 - `cargo check --workspace --all-targets` is the typecheck step.
 - `node scripts/heavy-lock.mjs cargo test --workspace` runs the Rust tests.
 - `node scripts/heavy-lock.mjs cargo build --workspace` builds the crates.
-- `node scripts/e2e.mjs` builds the release engine and runs the scenario tests under `e2e/`, one file at a time.
-- `node --test e2e/<file>.test.mjs` runs one scenario test file. Build the engine first with `node scripts/heavy-lock.mjs cargo build --release -p torpedo-engine`.
+- `node scripts/e2e.mjs` builds the release engine and settings window and runs the scenario tests under `e2e/`, one file at a time.
+- `node --test e2e/<file>.test.mjs` runs one scenario test file. Build first with `node scripts/heavy-lock.mjs cargo build --release -p torpedo-engine -p torpedo-settings`.
 - `./install.sh --dry-run` and `./uninstall.sh --dry-run` print what the scripts would do and write nothing. Only the owner runs `./install.sh` or `./uninstall.sh` for real. They take `PREFIX`, `COMPONENT_DIR` and `SUDO`, and the tests set all three to a temp folder.
 - `pnpm install` installs the Node dev dependencies. The coverage check needs TypeScript from them.
 
@@ -41,6 +43,8 @@ The owner's desktop types through IBus. A mistake with the live IBus session sto
 - Never write to `~/.config/ibus`, `~/.cache/ibus`, `~/.config/environment.d`, `~/.config/systemd` or `/usr`.
 - Tests run only against a private ibus-daemon inside `dbus-run-session`. Point `IBUS_ADDRESS_FILE`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` and `XDG_DATA_HOME` at a temp dir. Without `IBUS_ADDRESS_FILE`, a private daemon overwrites the live address file.
 - Stop each private ibus-daemon with SIGTERM and wait for it to exit before its `dbus-run-session` ends. Never leave one to die when its bus goes away. A crashed private daemon makes Ubuntu show the owner an "IBus Preferences has closed unexpectedly" crash dialog.
+- Never open the settings window on the owner's display. A test that runs `torpedo-settings` gives it an action such as `--check`, and runs it with `DISPLAY` and `WAYLAND_DISPLAY` unset.
+- Never write to the owner's `~/.config/torpedo`. Tests point `XDG_CONFIG_HOME` and `HOME` at a temp dir.
 - Install onto the live desktop only when the owner asks.
 
 ## A change to behavior goes through OpenSpec

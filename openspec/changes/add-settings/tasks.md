@@ -40,7 +40,7 @@
 
 ## 8. Words and docs
 
-- [ ] 8.1 Check the glossary terms that the proposal added (Config file, Settings window) and changed (Alias, Query, Trigger) against the final code. Add the settings window, `TORPEDO_SETTINGS_COMMAND` and the new harness options to `AGENTS.md`. Verify that `spec-checks claims add-settings` shows no claim that the change contradicts.
+- [x] 8.1 Check the glossary terms that the proposal added (Config file, Settings window) and changed (Alias, Query, Trigger) against the final code. Add the settings window, `TORPEDO_SETTINGS_COMMAND` and the new harness options to `AGENTS.md`. Verify that `spec-checks claims add-settings` shows no claim that the change contradicts.
 
 ## 9. Integration
 
