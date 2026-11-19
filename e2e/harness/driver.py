@@ -326,8 +326,29 @@ def do_key(cmd):
     return {"ok": got, "events": take()}
 
 
+def do_burst(cmd):
+    """Send every key at once, without waiting for a reply in between."""
+    keys = cmd["keys"]
+    replies = []
+
+    def done(ic, res, index):
+        try:
+            handled = ic.process_key_event_async_finish(res)
+        except GLib.Error:
+            handled = None
+        events.append({"type": "reply", "handled": handled, "index": index})
+        replies.append(index)
+
+    for i, k in enumerate(keys):
+        ctx.process_key_event_async(k["keyval"], k.get("keycode", 0), k.get("state", 0), -1, None, done, i)
+    got = wait_for(lambda: len(replies) == len(keys), 10)
+    return {"ok": got, "events": take()}
+
+
 def handle(cmd):
     c = cmd["cmd"]
+    if c == "burst":
+        return do_burst(cmd)
     if c == "context":
         return do_context(cmd)
     if c == "key":

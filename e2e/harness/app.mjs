@@ -93,9 +93,11 @@ export class App {
         case 'hide-table':
           this.table = null;
           break;
-        case 'reply':
-          if (key && e.handled === false) this.letThrough(key);
+        case 'reply': {
+          const k = Array.isArray(key) ? key[e.index] : key;
+          if (k && e.handled === false) this.letThrough(k);
           break;
+        }
         case 'forward':
           this.letThrough({ keyval: e.keyval, state: e.state });
           break;
@@ -130,6 +132,19 @@ export class App {
     const reply = await this.session.send({ cmd: 'key', keyval, state });
     this.fold(reply.events, key);
     return this;
+  }
+
+  /** Send all keys at once, without waiting for a reply in between. */
+  async burst(keys) {
+    const reply = await this.session.send({ cmd: 'burst', keys });
+    if (!reply.ok) throw new Error('not every key of the burst got a reply');
+    this.fold(reply.events, keys);
+    return this;
+  }
+
+  /** The keys that type `text`, with the state the Danish layout gives each. */
+  static keysOf(text) {
+    return [...text].map((ch) => ({ keyval: keyvalOf(ch), state: stateOf(ch) }));
   }
 
   async release(keyval, state = 0) {

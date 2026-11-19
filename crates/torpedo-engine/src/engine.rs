@@ -95,7 +95,10 @@ impl Default for Engine {
     }
 }
 
-#[interface(name = "org.freedesktop.IBus.Engine")]
+// `spawn = false`: zbus otherwise runs each method call in its own task, and
+// two key events in flight could then take the picker in either order. Without
+// spawning, the object server handles one call at a time, in arrival order.
+#[interface(name = "org.freedesktop.IBus.Engine", spawn = false)]
 impl Engine {
     async fn process_key_event(
         &mut self,
