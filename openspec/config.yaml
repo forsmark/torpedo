@@ -1,0 +1,39 @@
+schema: spec-driven
+skillsScope: project
+
+context: |
+  Torpedo is an inline emoji picker for Linux, like Rocket on macOS. You type a trigger such as "::" and a Slack-style name in any text field, and torpedo shows matching emoji at the cursor and inserts the one you pick. It is for the owner's GNOME Wayland desktop.
+  Stack: Rust (stable, via rustup) and Cargo. IBus input method engine over D-Bus with zbus. GTK4 with gtk4-rs for the settings window. Emoji data from gemoji, settings in TOML. Tests with cargo test.
+  Domain words live in GLOSSARY.md at the repo root and are binding. Use those terms in code, specs and change names.
+  This repo follows the spec-checks practice: load the skill spec-checks:practice before you propose, apply or archive a change.
+
+# Project context (optional)
+# Add only constraints that should guide OpenSpec artifacts and workflows.
+# Include constraints an agent cannot infer by reading the code.
+# Keep general project documentation and discoverable codebase facts out.
+# Example:
+#   context: |
+#     Designs and tasks must cover Windows, macOS, and Linux
+#     Write all artifacts in Spanish
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always state what is out of scope
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
