@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
-import { e2eTestFiles } from './e2e.mjs';
+import { BUILD, e2eTestFiles } from './e2e.mjs';
 
 describe('the scenario test files', () => {
   const root = mkdtempSync(join(tmpdir(), 'torpedo-e2e-'));
@@ -21,5 +21,11 @@ describe('the scenario test files', () => {
     writeFileSync(join(root, 'e2e/harness.mjs'), '');
     writeFileSync(join(root, 'e2e/a.test.mjs'), '');
     assert.deepEqual(e2eTestFiles(root), ['e2e/a.test.mjs', 'e2e/trigger/search.test.mjs']);
+  });
+});
+
+describe('the engine build before the scenario tests', () => {
+  it('builds the release binary of the engine', () => {
+    assert.deepEqual(BUILD, ['cargo', ['build', '--release', '-p', 'torpedo-engine']]);
   });
 });
