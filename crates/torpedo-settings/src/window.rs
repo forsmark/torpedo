@@ -120,6 +120,10 @@ struct Ui {
     trigger: adw::EntryRow,
     skin_tone: adw::ComboRow,
     remember: adw::SwitchRow,
+    /// A bad `skin_tone` or `remember_usage` in the file. The row shows it,
+    /// and nothing is saved until the user picks a value in that row.
+    tone_problem: Option<String>,
+    remember_problem: Option<String>,
     trigger_error: gtk::Label,
     list: gtk::ListBox,
     rows: Vec<AliasRow>,
@@ -192,7 +196,7 @@ fn save(ui: &Shared) {
             }
         }
     }
-    if !checked.can_save() {
+    if !checked.can_save() || ui.tone_problem.is_some() || ui.remember_problem.is_some() {
         return;
     }
     let values = Values {
@@ -379,6 +383,8 @@ fn build(app: &adw::Application, path: &Path) {
         trigger: trigger.clone(),
         skin_tone: skin_tone.clone(),
         remember: remember.clone(),
+        tone_problem: None,
+        remember_problem: None,
         trigger_error,
         list,
         rows: Vec::new(),
@@ -400,6 +406,24 @@ fn build(app: &adw::Application, path: &Path) {
             let at = SkinTone::ALL.iter().position(|t| *t == tone).unwrap_or(0);
             skin_tone.set_selected(at as u32);
             remember.set_active(doc.raw_remember_usage().unwrap_or(true));
+            if let Err(problems) = doc.config() {
+                let mut state = ui.borrow_mut();
+                for p in problems {
+                    let row: &adw::PreferencesRow = if p.key == tone::SKIN_TONE_KEY {
+                        state.tone_problem = Some(p.message.clone());
+                        skin_tone.upcast_ref()
+                    } else if p.key == config::REMEMBER_USAGE_KEY {
+                        state.remember_problem = Some(p.message.clone());
+                        remember.upcast_ref()
+                    } else {
+                        continue;
+                    };
+                    row.add_css_class("error");
+                    if let Some(action) = row.downcast_ref::<adw::ActionRow>() {
+                        action.set_subtitle(&format!("{}. Pick a value to fix it.", p.message));
+                    }
+                }
+            }
             if let Ok(c) = doc.config() {
                 ui.borrow_mut().saved = Some(Values {
                     trigger: c.trigger,
@@ -431,9 +455,21 @@ fn build(app: &adw::Application, path: &Path) {
     let u = ui.clone();
     trigger.connect_apply(move |_| save_soon(&u));
     let u = ui.clone();
-    skin_tone.connect_selected_notify(move |_| save_soon(&u));
+    skin_tone.connect_selected_notify(move |row| {
+        if u.borrow_mut().tone_problem.take().is_some() {
+            row.remove_css_class("error");
+            row.set_subtitle("For hands and people. Your aliases stay as you wrote them.");
+        }
+        save_soon(&u);
+    });
     let u = ui.clone();
-    remember.connect_active_notify(move |_| save_soon(&u));
+    remember.connect_active_notify(move |row| {
+        if u.borrow_mut().remember_problem.take().is_some() {
+            row.remove_css_class("error");
+            row.set_subtitle("Show the emoji you use most first");
+        }
+        save_soon(&u);
+    });
     let u = ui.clone();
     add.connect_clicked(move |_| {
         let entry = add_row(&u, "", "");
