@@ -16,8 +16,9 @@ Installation puts the engine and its component file where IBus finds them with o
 
 #### Scenario: The default prefix
 - **GIVEN** `PREFIX` is not set and `HOME` names an empty folder
-- **WHEN** the owner runs `install.sh`
-- **THEN** the binary is at `$HOME/.local/lib/torpedo/ibus-engine-torpedo`
+- **WHEN** `install.sh` prints its plan with `--dry-run`
+- **THEN** the plan copies the binary to `$HOME/.local/lib/torpedo/ibus-engine-torpedo`
+- **AND** the script writes nothing
 
 ### Requirement: Install writes the component file
 `install.sh` SHALL write `torpedo.xml` into `$COMPONENT_DIR` through `$SUDO`. The file SHALL start the installed binary by its absolute path with `--ibus`, and SHALL name one engine `torpedo` with the layout `dk`. `COMPONENT_DIR` SHALL default to `/usr/share/ibus/component`, and `SUDO` to `sudo`.

@@ -41,17 +41,19 @@ The states are Idle, Prefix (a proper prefix of the trigger is held) and Search 
 | Release, or a modifier key alone | pass | pass, keep held | pass, keep held |
 | Ctrl, Alt or Super held | pass | commit held, pass | commit plain, close, pass |
 | Dead key | pass | commit held, pass | commit plain, close, pass |
-| Next trigger character | start Prefix or Search if at a boundary, else pass | extend; at full trigger open Search | (see `:` and others) |
-| Query character | pass | commit held + char, consume | append; no match: commit plain, close |
-| `:` | trigger rules | trigger rules | exact shortcode: commit emoji; else commit plain + `:` |
+| Next trigger character | start Prefix or Search if at a boundary, else pass | extend, and open Search at the full trigger | (see `:` and others) |
+| Query character | pass | commit held + char, consume | append, or with no match commit plain and close |
+| `:` | trigger rules | trigger rules | exact shortcode: commit emoji. Otherwise commit plain + `:` |
 | Any other character | pass | commit held + char, consume | commit plain + char, close, consume |
-| Backspace | pass | drop held, consume | pop query; empty query: drop all, close; consume |
+| Backspace | pass | drop held, consume | pop query, or with an empty query drop all and close. Consume |
 | Up, Down, Page Up, Page Down | pass | commit held, pass | with list: move, consume. No list: commit plain, close, pass |
 | Enter, Tab | pass | commit held, pass | with list: commit selected, consume. No list: commit plain, close, pass |
 | Esc | pass | commit held, pass | commit plain, close, consume |
 | Any other key without a character | pass | commit held, pass | commit plain, close, pass |
 
 "Commit held + char" and "commit plain + char" re-run the character through the Idle rules with the committed text as the last character. In practice that always gives one commit of the held text and the character together.
+
+A key with Ctrl, Alt or Super held is in the second row whatever the key is. So Ctrl+Enter during a search commits the plain text and passes through.
 
 Focus-in, focus-out, reset and disable put the picker in Idle and forget what it knew about the text before the cursor. They commit nothing (see "Held text is never lost").
 
@@ -77,14 +79,16 @@ Alternative considered: trust surrounding text always. It can lag one key behind
 
 ### Committed text and passed keys keep their order
 
-A character key that closes held text never passes through. The engine commits the held text and the character in one `CommitText` and consumes the key. The app then gets one string in the right order, whatever path the compositor uses. In GNOME Shell a committed string goes through text-input-v3, while a passed key goes through `wl_keyboard`. The harness cannot measure the order between those two paths, so this design does not depend on it.
+A character key that closes held text never passes through. The engine commits the held text and the character in one `CommitText` and consumes the key. The app then gets one string in the right order, whatever path the compositor uses. In GNOME Shell a committed string likely goes through text-input-v3, while a passed key goes through `wl_keyboard`. This is not verified. The harness cannot measure the order between those two paths, so this design does not depend on it.
 
 A key without a character cannot be committed as text: Ctrl+a, Left, Enter, a dead key. For these the engine commits the held text and returns false. The daemon handles this in two ways:
 
 - A client in sync mode sets `EffectivePostProcessKeyEvent`. The daemon then queues signals that arrive while a key is in flight and hands them to the client with the reply (`bus/inputcontext.c`, `bus_input_context_make_post_process_key_event`). The order then holds by construction.
-- An async client, such as GNOME Shell, gets the `CommitText` signal and the `ProcessKeyEvent` reply as two messages on one connection.
+- An async client gets the `CommitText` signal and the `ProcessKeyEvent` reply as two messages on one connection.
 
 Task 4.1 measures the async case in the harness first. The harness calls `process_key_event_async` and records the arrival of each signal and of the reply. The result picks one of two branches, both decided here:
+
+GNOME Shell calls the async method, as far as its source shows. This is not verified on the live desktop.
 
 1. The commit arrives before the reply in every run: keep commit and return false.
 2. It does not: commit the held text, return true, and emit `ForwardKeyEvent` with the same keyval, keycode and state.
@@ -94,6 +98,8 @@ The measurement and its result go into `docs/ibus-protocol.md`.
 ### Held text is never lost
 
 Every preedit update that shows held text uses preedit mode COMMIT, which is 1 (`IBUS_ENGINE_PREEDIT_COMMIT` in `src/ibustypes.h`). The daemon then commits the visible preedit itself on focus-out, reset, disable and engine switch (`bus_input_context_clear_preedit_text`, called from `bus_input_context_focus_out`, `_ic_reset`, `bus_input_context_disable` and `bus_input_context_unset_engine`). The engine only drops its state on those calls and commits nothing, so the text arrives once.
+
+A client that sets `client_commit_preedit` takes the other path: the daemon drops the preedit and the client commits it. The harness client does not set it, so the tests cover only the daemon path. Whether GNOME Shell sets it is not verified.
 
 When the engine commits by itself, it first sends `UpdatePreeditText("", 0, false, CLEAR)` and then `CommitText`. The daemon then holds no COMMIT preedit that it could commit a second time.
 
@@ -110,7 +116,8 @@ Alternative considered: a fuzzy matcher. The ranking in the brief is predictable
 
 - The engine sends an `IBusLookupTable` with page size 9, no labels, `round` false, cursor visible, and vertical orientation (1). Each candidate is the text `<emoji> <shortcode>`, such as `🔥 fire`. Vertical fits the shortcodes.
 - The engine keeps the cursor. Up and Down move it by one and Page Up and Page Down by 9, clamped to the list. Each move sends the table again.
-- `CandidateClicked(index, button, state)` gives an index within the shown page, as `ibusenginesimple.c` reads it. The engine adds the page start: `cursor - cursor % 9`.
+- `CandidateClicked(index, button, state)` gives an index within the shown page, as `ibusenginesimple.c` reads it. That GNOME Shell sends a page index too is not verified. The engine adds the page start: `cursor - cursor % 9`.
+- Only a panel can send a click. The daemon forwards `CandidateClicked` from the owner of `org.freedesktop.IBus.Panel` to the focused input context (`bus/panelproxy.c`, and `bus/ibusimpl.c` watches that name). In the desktop, GNOME Shell is the panel. In the harness, the driver registers an `IBus.PanelService` on the private bus and emits the click from it.
 - The engine also implements the `CursorUp`, `CursorDown`, `PageUp` and `PageDown` methods that a panel can call, with the same moves.
 
 ### The engine crate
@@ -134,6 +141,7 @@ The order is `IBUS_ADDRESS`, then the file named by `IBUS_ADDRESS_FILE`, then `$
 - `e2e/harness/session.mjs` starts `dbus-run-session --config-file e2e/harness/session.conf -- python3 -I e2e/harness/driver.py`. It makes a temp dir under `/tmp` with a short name, because a socket path has a limit of 107 bytes. It sets `IBUS_ADDRESS_FILE`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, `XDG_DATA_HOME`, `GSETTINGS_BACKEND=memory` and `GIO_USE_VFS=local`, and removes `IBUS_ADDRESS`.
 - The driver starts `/usr/bin/ibus-daemon` with `--cache=none --panel=disable --emoji-extension=disable --config=disable --single --verbose` and a private `IBUS_COMPONENT_PATH`. The component folder holds `simple.xml` from the system and a `torpedo.xml` that points at `target/release/torpedo-engine`.
 - The driver stops the daemon with SIGTERM and waits for it to exit when it reads "stop", at end of stdin, and on SIGTERM, SIGINT or SIGHUP. Node killing the test therefore closes stdin, and the daemon still stops before the D-Bus session ends.
+- Node starts the session in its own process group and never signals it. It only closes the driver's stdin. A Ctrl+C in the terminal then reaches the test runner and not `dbus-daemon`, so the bus cannot die before the driver has stopped the daemon.
 - One daemon serves one test file. Each test makes a new input context and focuses it, so the engine starts each test in Idle.
 - A key command returns the verdict and the events in arrival order: commits, preedit updates, list updates, forwarded keys and the reply. The Node side folds these into the app's text: a commit appends its text, and a reply of false appends the key's character, each at its place in arrival order. A test asserts on that text, so a wrong order fails the test.
 - After each test file, a guard compares a listing of `~/.config/ibus/bus/` with the one taken before. It fails the run when the folder changed.
@@ -145,6 +153,7 @@ The daemon-connection tests start the engine by hand through the driver, with an
 - Both are POSIX `sh` with `set -eu`. Overrides: `PREFIX` (default `$HOME/.local`), `COMPONENT_DIR` (default `/usr/share/ibus/component`) and `SUDO` (default `sudo`, and an empty value means no sudo). `${SUDO-sudo}` keeps an empty value empty.
 - `install.sh` runs `cargo build --release -p torpedo-engine`, then `install -D -m 755` to `$PREFIX/lib/torpedo/ibus-engine-torpedo`. It writes the component file to a temp file and runs `$SUDO install -D -m 644` into `$COMPONENT_DIR/torpedo.xml`.
 - `--dry-run` prints each step and writes nothing. The test of the defaults uses it, so no test ever writes to `/usr`.
+- Every install test sets `HOME` to its temp folder, also the `--dry-run` tests of the defaults. A bug in `--dry-run` then cannot write to the real `~/.local`. The helper keeps `CARGO_HOME` and `RUSTUP_HOME` pointing at the real toolchain, so cargo still works with the changed `HOME`.
 - The e2e test helper always sets `PREFIX`, `COMPONENT_DIR` and `SUDO`, and puts recording stubs for `ibus`, `gsettings`, `dconf` and `sudo` first on the PATH. It refuses to run the script when any of the three variables is unset or points outside the test's temp folder, except in `--dry-run`.
 
 ### The e2e runner builds the engine
@@ -154,7 +163,7 @@ The daemon-connection tests start the engine by hand through the driver, with an
 ## Risks / Trade-offs
 
 - [The order between a commit and a passed key in GNOME Shell is not measured] → Character keys never depend on it. For keys without a character the harness measures the daemon side, and the owner checks the Shell side after install.
-- [A passed dead key composes only if the app or compositor composes it] → The `dk` layout under the `xkb:dk::dan` engine composes in the engine. Under torpedo the compose step moves to the app. The owner checks `´` + `e` in GTK, Firefox and kitty after install. If it fails, a later change adds compose to torpedo.
+- [A passed dead key composes only if the app or compositor composes it] → The `xkb:dk::dan` engine is an `IBusEngineSimple`, which composes dead keys in the engine. Under torpedo the compose step moves to the app. Whether each app does it is not verified. The owner checks `´` + `e` in GTK, Firefox and kitty after install. If it fails, a later change adds compose to torpedo.
 - [Surrounding text can lag] → A key the engine passes marks it stale until the app sends fresh text.
 - [Kitty may send no surrounding text] → The last character since focus-in decides. After a cursor move by mouse the engine knows nothing and counts a boundary.
 - [The layout `dk` is fixed in the component file] → It matches the owner's desktop. A later change can make it an install option.

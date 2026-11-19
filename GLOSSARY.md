@@ -36,7 +36,7 @@ The underlined text that the app shows at the cursor while the engine holds it. 
 The characters typed after the trigger during a search. The search matches them against shortcodes.
 
 **Search**:
-The state that starts when the user types the full trigger at a boundary. It ends when the engine commits an emoji or the plain text.
+The state that starts when the user types the full trigger at a boundary. It ends when the engine commits an emoji or the plain text, or when Backspace removes the trigger.
 
 **Shortcode**:
 A Slack-style emoji name, such as thumbsup or +1, from gemoji data.

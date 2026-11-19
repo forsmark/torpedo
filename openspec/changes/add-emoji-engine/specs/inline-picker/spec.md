@@ -22,7 +22,7 @@ The engine SHALL let every key it does not use reach the app unchanged. A key re
 - **AND** the preedit still shows `::fi`
 
 ### Requirement: Ctrl, Alt and Super make a key pass through
-A key pressed while Ctrl, Alt or Super is held SHALL pass through. Shift and AltGr SHALL NOT make a key pass through, because the Danish layout needs them for `:` and for `@ £ $ { [ ] }`. Caps Lock and Num Lock SHALL NOT make a key pass through.
+A key pressed while Ctrl, Alt or Super is held SHALL pass through. This rule comes before the rules for Enter, Tab, Backspace, Esc, the arrows and the page keys. Shift and AltGr SHALL NOT make a key pass through, because the Danish layout needs them for `:` and for `@ £ $ { [ ] }`. Caps Lock and Num Lock SHALL NOT make a key pass through.
 
 #### Scenario: Ctrl with a letter passes through
 - **GIVEN** no text is held
@@ -147,7 +147,7 @@ The trigger SHALL be `::`.
 - **AND** the preedit shows `::`
 
 ### Requirement: A trigger prefix is held
-While the typed keys are a proper prefix of the trigger, the engine SHALL hold them in the preedit. When the next key does not continue the trigger, the engine SHALL commit the held text and handle the key as usual.
+While the typed keys are a proper prefix of the trigger, the engine SHALL hold them in the preedit. When the next key press does not continue the trigger and is neither Backspace nor a modifier key alone, the engine SHALL commit the held text and handle the key as usual.
 
 #### Scenario: The first colon is held
 - **GIVEN** the cursor is at a boundary
@@ -333,7 +333,7 @@ When the query is an exact shortcode, `:` SHALL commit that shortcode's emoji an
 - **THEN** the app receives `::fir:`
 
 ### Requirement: Another character closes the search
-A character that is not a query character SHALL close the search, commit the plain text, and then be handled as usual.
+A character that is not a query character, other than the `:` after an exact shortcode, SHALL close the search, commit the plain text, and then be handled as usual.
 
 #### Scenario: A space closes the search
 - **GIVEN** a search is open with the query `fi`
