@@ -98,7 +98,7 @@ The engine SHALL write the usage file to a temp file in the same folder and rena
 - **THEN** every read is a whole usage file
 
 ### Requirement: A missing or broken usage file never stops typing
-When the usage file is missing, does not parse or holds a bad entry, the engine SHALL use no usage. The next commit SHALL replace a broken usage file with one that holds only that commit.
+When the usage file is missing, does not parse or holds a bad entry, the engine SHALL use no usage. The next commit SHALL replace a broken usage file with one that holds only that commit. Before that, the engine SHALL rename the broken usage file to `usage.toml.broken` in the same folder, replacing an older one.
 
 #### Scenario: A broken usage file at start
 - **GIVEN** the usage file holds `[[used]` with no closing bracket
@@ -115,6 +115,12 @@ When the usage file is missing, does not parse or holds a bad entry, the engine 
 - **GIVEN** the usage file holds `[[used]` with no closing bracket
 - **WHEN** the user types `::fire:` at a boundary
 - **THEN** the usage file holds one entry, for 🔥
+
+#### Scenario: A broken usage file is kept aside
+- **GIVEN** the usage file holds `[[used]` with no closing bracket, and `usage.toml.broken` holds older text
+- **WHEN** the user types `::fire:` at a boundary
+- **THEN** `usage.toml.broken` holds `[[used]` with no closing bracket
+- **AND** the usage file holds one entry, for 🔥
 
 ### Requirement: Turning usage off
 When the config file sets `remember_usage = false`, the engine SHALL NOT write the usage file, and the search SHALL ignore the usage. The engine SHALL NOT delete the usage file.

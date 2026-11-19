@@ -84,8 +84,8 @@ last = 1763560000
 - `Outcome` gains `used: Option<String>`: the untoned text of the emoji or alias that the step committed, or `None`. The picker sets it on Enter, Tab, a click and the closing colon. Plain text commits leave it `None`.
 - The engine keeps a `UsageWatch`, built like `ConfigWatch`. Both share the fingerprint code, which moves to its own module. `check()` runs where the config check runs: at start, on FocusIn and FocusInId, and after a key that opened a search. A new fingerprint reads the file. A missing or bad file gives an empty `Usage`, and a bad file is logged once under `TORPEDO_DEBUG`.
 - After an outcome with `used`, and only when `remember_usage` is true, the engine calls `record(text, SystemTime::now())`, saves, and stores the fingerprint of the file it wrote. So its own write does not count as a change, and a delete by the settings window does. A failed save is logged and typing goes on with the usage in memory.
-- The engine passes the usage to the picker with `Picker::set_usage(&Usage)` after each read and each record. With `remember_usage = false` the engine passes an empty usage, so the search ignores the file. It still keeps the file untouched.
-- A broken usage file reads as empty, so the next commit writes a file with that one entry. The broken text is lost. The usage file is state that torpedo owns, so this is fine.
+- The engine passes the usage to the picker with `Picker::set_usage(&Usage)` after each read and each record. With `remember_usage = false` the engine passes an empty usage, so it neither records nor ranks by usage. It keeps the file untouched, so turning usage on again brings the ranking back.
+- A broken usage file reads as empty, so the next commit writes a file with that one entry. Before that write, the engine renames the broken file to `usage.toml.broken` in the same folder, which replaces an older one. So a hand edit that went wrong is never lost silently, and at most one broken copy stays. The engine remembers that the file it read was broken, and renames only then. A missing file is not renamed. When the rename fails, the engine logs it and still writes the new file.
 
 ### The skin tone
 
