@@ -16,10 +16,10 @@
 
 ## 3. The picker in torpedo-core
 
-- [ ] 3.1 Add `serde` and `serde_json` to `torpedo-core`. Add the `emoji` module: embed `emoji.json` with `include_str!`, parse it once, and rank matches as design.md says. Verify with unit tests for `fire`, `ire`, `thumbs`, `fist`, `+1`, `1st_place`, `FIRE` and `fireq`.
-- [ ] 3.2 Add the `keys` module: keyval to character, the dead key table with combining marks and spacing forms, modifier keys, keypad keys, and the pass-through modifier mask. Add `unicode-normalization` and a compose function. Verify with unit tests for `:` with Shift, `{` with Mod5, `æ`, `KP_1`, `dead_acute`, `dead_belowdot`, `Shift_L`, `ISO_Level3_Shift`, Ctrl, Alt and Super states, and compose of `´e`, `¨u`, `~n`, `´E`, `´q` and `˚a`.
-- [ ] 3.3 Add the `boundary` module: surrounding text with cursor and anchor, the stale mark, and the last character. Add the emoji end check and the opening brackets and quotes. Verify with unit tests for start of text, after a space, after a letter, after `(` and `„`, after 🔥 and ❤️, a selection, stale text, an unknown last character, and the last character of every gemoji emoji.
-- [ ] 3.4 Add the `picker` module: the states and the key table of design.md, with the trigger as a parameter. Verify with one unit test per cell of both tables, and with a trigger of one character and of three characters.
+- [x] 3.1 Add `serde` and `serde_json` to `torpedo-core`. Add the `emoji` module: embed `emoji.json` with `include_str!`, parse it once, and rank matches as design.md says. Verify with unit tests for `fire`, `ire`, `thumbs`, `fist`, `+1`, `1st_place`, `FIRE` and `fireq`.
+- [x] 3.2 Add the `keys` module: keyval to character, the dead key table with combining marks and spacing forms, modifier keys, keypad keys, and the pass-through modifier mask. Add `unicode-normalization` and a compose function. Verify with unit tests for `:` with Shift, `{` with Mod5, `æ`, `KP_1`, `dead_acute`, `dead_belowdot`, `Shift_L`, `ISO_Level3_Shift`, Ctrl, Alt and Super states, and compose of `´e`, `¨u`, `~n`, `´E`, `´q` and `˚a`.
+- [x] 3.3 Add the `boundary` module: surrounding text with cursor and anchor, the stale mark, and the last character. Add the emoji end check and the opening brackets and quotes. Verify with unit tests for start of text, after a space, after a letter, after `(` and `„`, after 🔥 and ❤️, a selection, stale text, an unknown last character, and the last character of every gemoji emoji.
+- [x] 3.4 Add the `picker` module: the states and the key table of design.md, with the trigger as a parameter. Verify with one unit test per cell of both tables, and with a trigger of one character and of three characters.
 
 ## 4. The picker in the engine
 
