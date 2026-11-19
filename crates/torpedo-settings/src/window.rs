@@ -25,23 +25,46 @@ pub struct Checked {
     pub rows: Vec<Option<String>>,
     /// The aliases to save, from the rows that are not blank.
     pub aliases: Vec<Alias>,
+    /// A row that still has the focus is not good yet. It shows no problem,
+    /// and nothing is saved until the focus leaves it.
+    pub pending: bool,
 }
 
 impl Checked {
+    /// No field shows a problem.
     pub fn is_good(&self) -> bool {
         self.trigger.is_none() && self.rows.iter().all(Option::is_none)
     }
+
+    /// The values may be saved.
+    pub fn can_save(&self) -> bool {
+        self.is_good() && !self.pending
+    }
+}
+
+/// One alias row of the window.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RowValues {
+    pub name: String,
+    pub text: String,
+    /// The focus is in the row, so the user may still be typing.
+    pub editing: bool,
 }
 
 /// Check the trigger and the alias rows with the rules of the config file. A
 /// row with an empty name and an empty text is blank, and is skipped.
-pub fn check_values(trigger: &str, rows: &[(String, String)]) -> Checked {
+pub fn check_values(trigger: &str, rows: &[RowValues]) -> Checked {
     let mut out = Checked {
         trigger: config::check_trigger(trigger).err(),
         ..Checked::default()
     };
     let mut seen: Vec<String> = Vec::new();
-    for (name, text) in rows {
+    for RowValues {
+        name,
+        text,
+        editing,
+    } in rows
+    {
         if name.is_empty() && text.is_empty() {
             out.rows.push(None);
             continue;
@@ -60,7 +83,12 @@ pub fn check_values(trigger: &str, rows: &[(String, String)]) -> Checked {
                 text: text.clone(),
             });
         }
-        out.rows.push(problem);
+        if problem.is_some() && *editing {
+            out.pending = true;
+            out.rows.push(None);
+        } else {
+            out.rows.push(problem);
+        }
     }
     out
 }
@@ -80,6 +108,8 @@ struct Ui {
     rows: Vec<AliasRow>,
     toasts: adw::ToastOverlay,
     banner: adw::Banner,
+    /// The values last read or written, so an unchanged field saves nothing.
+    saved: Option<(String, Vec<Alias>)>,
 }
 
 type Shared = Rc<RefCell<Ui>>;
@@ -115,13 +145,17 @@ fn save_soon(ui: &Shared) {
 }
 
 fn save(ui: &Shared) {
-    let Ok(ui) = ui.try_borrow() else {
+    let Ok(mut ui) = ui.try_borrow_mut() else {
         return;
     };
-    let rows: Vec<(String, String)> = ui
+    let rows: Vec<RowValues> = ui
         .rows
         .iter()
-        .map(|r| (r.name.text().to_string(), r.text.text().to_string()))
+        .map(|r| RowValues {
+            name: r.name.text().to_string(),
+            text: r.text.text().to_string(),
+            editing: r.root.state_flags().contains(gtk::StateFlags::FOCUS_WITHIN),
+        })
         .collect();
     let trigger = ui.trigger.text().to_string();
     let checked = check_values(&trigger, &rows);
@@ -141,7 +175,11 @@ fn save(ui: &Shared) {
             }
         }
     }
-    if !checked.is_good() {
+    if !checked.can_save() {
+        return;
+    }
+    let values = (trigger.clone(), checked.aliases.clone());
+    if ui.saved.as_ref() == Some(&values) {
         return;
     }
     // Start from the file as it is now, so a hand edit of other keys or
@@ -159,6 +197,7 @@ fn save(ui: &Shared) {
         Ok(()) => {
             ui.banner.set_revealed(false);
             ui.toasts.add_toast(adw::Toast::new("Saved"));
+            ui.saved = Some(values);
         }
         Err(e) => {
             ui.banner.set_title(&format!("Not saved: {e}"));
@@ -290,6 +329,7 @@ fn build(app: &adw::Application, path: &Path) {
         rows: Vec::new(),
         toasts,
         banner: banner.clone(),
+        saved: None,
     }));
 
     match &loaded {
@@ -300,6 +340,9 @@ fn build(app: &adw::Application, path: &Path) {
             );
             for a in doc.raw_aliases() {
                 add_row(&ui, &a.name, &a.text);
+            }
+            if let Ok(c) = doc.config() {
+                ui.borrow_mut().saved = Some((c.trigger, doc.raw_aliases()));
             }
             if doc.config().is_err() {
                 // Show where each bad value is. Nothing is written until all
@@ -355,9 +398,13 @@ pub fn run(path: PathBuf) -> ExitCode {
 mod tests {
     use super::*;
 
-    fn rows(r: &[(&str, &str)]) -> Vec<(String, String)> {
+    fn rows(r: &[(&str, &str)]) -> Vec<RowValues> {
         r.iter()
-            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .map(|(a, b)| RowValues {
+                name: a.to_string(),
+                text: b.to_string(),
+                editing: false,
+            })
             .collect()
     }
 
@@ -385,5 +432,19 @@ mod tests {
         assert_eq!(c.rows[2].as_deref(), Some("another alias has this name"));
         assert!(c.rows[3].is_some());
         assert!(!c.is_good());
+    }
+
+    #[test]
+    fn a_row_in_edit_waits_without_a_problem() {
+        let mut r = rows(&[("lgtm", "👍"), ("ship", "")]);
+        r[1].editing = true;
+        let c = check_values("::", &r);
+        assert!(c.is_good());
+        assert!(c.pending);
+        assert!(!c.can_save());
+        r[1].editing = false;
+        let c = check_values("::", &r);
+        assert!(c.rows[1].is_some());
+        assert!(!c.can_save());
     }
 }

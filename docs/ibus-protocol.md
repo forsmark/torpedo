@@ -63,7 +63,7 @@ Only a panel can send a click. The daemon forwards the `CandidateClicked` signal
 
 - An engine sends its menu items with the signal `RegisterProperties(v)`, where the `v` holds an IBusPropList. `UpdateProperty(v)` changes one item.
 - The daemon sends `RegisterProperties` to the client only when the client has the PROPERTY capability (16). Otherwise it goes to the panel, for the focused input context (`bus/inputcontext.c`, `bus_input_context_register_properties`, and `bus/panelproxy.c`, `_context_register_properties_cb`). GNOME Shell is the panel and shows the items in the input source menu of the top bar.
-- The daemon does not keep the list. Engines send it on every FocusIn, because the panel shows the items of the focused input context.
+- The panel takes a list only from the focused input context (`_context_register_properties_cb` returns early for any other). So torpedo sends the list on every FocusIn. Whether the daemon keeps a list for a later panel was not checked.
 - The panel's signal `PropertyActivate(s name, u state)` reaches the engine of the focused input context as the method `PropertyActivate(s, u)` (`bus/panelproxy.c`, `bus_panel_proxy_property_activate`). A client can also call `PropertyActivate` on its input context (`bus/inputcontext.c`, `_ic_property_activate`).
 - PyGObject has no `register-properties` signal on `IBus.PanelService`, only the virtual method `do_register_properties`. The harness panel is a subclass that overrides it.
 

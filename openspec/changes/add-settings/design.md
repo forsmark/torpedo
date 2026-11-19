@@ -170,3 +170,16 @@ The coverage adapter reads `node --test` files under `e2e/` only. So each scenar
 1. The owner runs `./install.sh` again. It asks for the sudo password once, for the component file with its new `<setup>`.
 2. The owner runs `ibus restart`. The engine starts with the defaults, so typing works as before with no config file.
 3. To roll back, the owner runs `./uninstall.sh`, or installs the previous version. A config file left behind does no harm.
+
+## Changed during apply
+
+### 2026-11-19: The window saves through with_values, not the edit functions
+
+The decision "The mode without a window" says the window's apply handlers call the same `ConfigDocument` functions as the flags. They do not. The flags call `set_trigger`, `set_alias` and `remove_alias`, which check each edit and refuse it when the whole result is bad. A file with two bad values can then never be fixed one field at a time, because each single fix still leaves the other bad value. So the window collects every field, checks them with `check_values`, and writes them in one step with `ConfigDocument::with_values` and `save`. `save` checks the whole file with `parse`, as the flags do.
+
+Both paths share `parse`, the `check_*` rules, the temp file and rename of `save`, and the way `toml_edit` keeps comments and unknown keys. What differs is the step before `save`. For the scenarios under *Saving refuses a bad value* and *Saving keeps what the window does not manage*, the e2e tests show the flag path. The window's path has Rust tests in torpedo-core (`with_values_sets_exactly_these_values_and_keeps_the_rest`) and torpedo-settings (`check_values`), and no e2e test, because no test opens a window.
+
+Two details of the window came with it. A row that still has the focus shows no problem and blocks no save until the focus leaves it, so a new alias does not show "the alias text is empty" while the user types its name. And a save that would write the values the file already holds is skipped. The window also reads the file again before each save, so a hand edit of other keys since the window opened is kept.
+
+No other task depended on the old wording. Task 5.2 built the window this way.
+
