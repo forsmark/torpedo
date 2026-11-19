@@ -32,8 +32,10 @@ Each IBus object (an IBusSerializable) is a struct that starts with `(s type_nam
 | IBusAttrList | `(sa{sv}av)` | attributes, each in `v` |
 | IBusText | `(sa{sv}sv)` | text, attribute list in `v` |
 | IBusLookupTable | `(sa{sv}uubbiavav)` | page_size, cursor_pos, cursor_visible, round, orientation, candidates (`av` of IBusText), labels (`av` of IBusText) |
+| IBusProperty | `(sa{sv}suvsvbbuvv)` | key, type, label (IBusText), icon, tooltip (IBusText), sensitive, visible, state, sub_props (IBusPropList), symbol (IBusText) |
+| IBusPropList | `(sa{sv}av)` | properties, each an IBusProperty in `v` |
 
-Attribute type 1 is UNDERLINE, 2 FOREGROUND and 3 BACKGROUND. Underline value 1 is SINGLE. Orientation 0 is horizontal, 1 vertical and 2 the system default.
+Attribute type 1 is UNDERLINE, 2 FOREGROUND and 3 BACKGROUND. Property type 0 is NORMAL, 1 TOGGLE, 2 RADIO, 3 MENU and 4 SEPARATOR. Property state 0 is UNCHECKED and 1 CHECKED. The order of the IBusProperty fields comes from `IBus.Property.serialize_object()` of libibus 1.5.34. The symbol comes last because it was added later. Underline value 1 is SINGLE. Orientation 0 is horizontal, 1 vertical and 2 the system default.
 
 Pitfall: in zvariant, a `Value` used as a tuple field or as an element of a `Vec<Value>` is already encoded as `v`. Never wrap these in `Value::new()`, which gives `v<v<..>>`. libibus tolerates one extra level at the top, but the nested IBusAttrList then fails with a GLib-CRITICAL. The correct nesting of an IBusText is `(s,a{sv},s,v<(s,a{sv},[v<(s,a{sv},u,u,u,u)>])>)`.
 
@@ -56,6 +58,18 @@ UpdatePreeditText's fourth argument is the mode: 0 is `IBUS_ENGINE_PREEDIT_CLEAR
 ## Clicks come from the panel
 
 Only a panel can send a click. The daemon forwards the `CandidateClicked` signal of the owner of `org.freedesktop.IBus.Panel` to the focused input context (`bus/panelproxy.c`, and `bus/ibusimpl.c` watches the name). The index is within the shown page, as `src/ibusenginesimple.c` reads it. In the desktop, GNOME Shell is the panel.
+
+## Properties and the input source menu
+
+- An engine sends its menu items with the signal `RegisterProperties(v)`, where the `v` holds an IBusPropList. `UpdateProperty(v)` changes one item.
+- The daemon sends `RegisterProperties` to the client only when the client has the PROPERTY capability (16). Otherwise it goes to the panel, for the focused input context (`bus/inputcontext.c`, `bus_input_context_register_properties`, and `bus/panelproxy.c`, `_context_register_properties_cb`). GNOME Shell is the panel and shows the items in the input source menu of the top bar.
+- The daemon does not keep the list. Engines send it on every FocusIn, because the panel shows the items of the focused input context.
+- The panel's signal `PropertyActivate(s name, u state)` reaches the engine of the focused input context as the method `PropertyActivate(s, u)` (`bus/panelproxy.c`, `bus_panel_proxy_property_activate`). A client can also call `PropertyActivate` on its input context (`bus/inputcontext.c`, `_ic_property_activate`).
+- PyGObject has no `register-properties` signal on `IBus.PanelService`, only the virtual method `do_register_properties`. The harness panel is a subclass that overrides it.
+
+## The settings button in GNOME Settings
+
+GNOME Settings shows a settings button for an IBus input source when a desktop file named `ibus-setup-<engine>.desktop` exists, with the engine name cut at the first `:` (`panels/keyboard/cc-input-source-ibus.c`, `cc_input_source_ibus_get_app_info` in gnome-control-center). It does not read `<setup>` from the component file. GIO looks for the desktop file in `$XDG_DATA_HOME/applications` and the system folders.
 
 ## Key events and order
 

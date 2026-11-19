@@ -3,6 +3,7 @@
 //! This crate uses no D-Bus and no GTK, so its tests run without a desktop.
 
 pub mod boundary;
+pub mod config;
 pub mod emoji;
 pub mod keys;
 pub mod picker;

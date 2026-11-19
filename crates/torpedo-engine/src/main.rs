@@ -5,6 +5,7 @@
 //! daemon, and a stray run must not register there.
 
 mod address;
+mod config_watch;
 mod engine;
 mod ibus_types;
 
