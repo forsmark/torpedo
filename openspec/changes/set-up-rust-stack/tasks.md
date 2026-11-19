@@ -36,7 +36,7 @@
 
 ## 5. Integration
 
-- [ ] 5.1 On a clean tree, run `node scripts/verify.mjs`, `node --test "scripts/**/*.test.mjs"` and `node tools/spec-checks/bin/spec-checks verify`. Verify that all three pass.
+- [x] 5.1 On a clean tree, run `node scripts/verify.mjs`, `node --test "scripts/**/*.test.mjs"` and `node tools/spec-checks/bin/spec-checks verify`. Verify that all three pass.
 
 ## Workflow follow-up
 
