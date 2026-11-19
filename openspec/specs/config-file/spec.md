@@ -1,7 +1,7 @@
 # config-file Specification
 
 ## Purpose
-The config file holds the user's trigger and aliases. The engine reads it, and the settings window writes it. A bad or missing file never stops typing.
+The config file holds the user's trigger, aliases, skin tone and usage switch. The engine reads it, and the settings window writes it. A bad or missing file never stops typing.
 
 ## Requirements
 
@@ -19,7 +19,7 @@ The config file SHALL be `$XDG_CONFIG_HOME/torpedo/config.toml`. When `XDG_CONFI
 - **THEN** it checks `$HOME/.config/torpedo/config.toml`
 
 ### Requirement: A missing config file means defaults
-When the config file does not exist, the engine SHALL use the trigger `::` and no aliases.
+When the config file does not exist, the engine SHALL use the trigger `::`, no aliases, and the default of each other key.
 
 #### Scenario: No config file
 - **GIVEN** no config file exists
@@ -56,7 +56,7 @@ When the engine finds a bad config file and `TORPEDO_DEBUG` is set, it SHALL wri
 The engine and the settings window SHALL ignore keys and tables of the config file that they do not know.
 
 #### Scenario: A key from a later version
-- **GIVEN** the config file sets `skin_tone = "medium"`, a table `[recents]` and the trigger `;;`
+- **GIVEN** the config file sets `theme = "dark"`, a table `[later]` and the trigger `;;`
 - **WHEN** the user types `;;fire:` at a boundary
 - **THEN** the app receives 🔥
 
@@ -180,3 +180,44 @@ When the engine reads a new trigger while text is held, it SHALL finish the held
 - **GIVEN** the engine read a config file with the trigger `::`, and the input context keeps its focus
 - **WHEN** the file changes to the trigger `;;`, and the user types `::`, Esc, a space and `;;fire:`
 - **THEN** the app receives `:: 🔥`
+
+### Requirement: The skin_tone value
+The `skin_tone` key SHALL be one of the strings `none`, `light`, `medium-light`, `medium`, `medium-dark` and `dark`. Any other value SHALL make the config file bad. Without the key, the skin tone SHALL be `none`.
+
+#### Scenario: A known skin tone
+- **GIVEN** a config file with `skin_tone = "medium-dark"`
+- **WHEN** `torpedo-settings --check` checks it
+- **THEN** the file is good
+
+#### Scenario: A skin tone in upper case
+- **GIVEN** a config file with `skin_tone = "Medium"`
+- **WHEN** `torpedo-settings --check` checks it
+- **THEN** the file is bad, and the problem names `skin_tone`
+
+#### Scenario: A skin tone that is not a string
+- **GIVEN** a config file with `skin_tone = 3`
+- **WHEN** `torpedo-settings --check` checks it
+- **THEN** the file is bad, and the problem names `skin_tone`
+
+#### Scenario: No skin_tone key
+- **GIVEN** a config file with only the trigger `::`
+- **WHEN** the user types `::wave:` at a boundary
+- **THEN** the app receives 👋 with no modifier
+
+### Requirement: The remember_usage value
+The `remember_usage` key SHALL be a boolean. Any other value SHALL make the config file bad. Without the key, `remember_usage` SHALL be `true`.
+
+#### Scenario: Usage turned off
+- **GIVEN** a config file with `remember_usage = false`
+- **WHEN** `torpedo-settings --check` checks it
+- **THEN** the file is good
+
+#### Scenario: remember_usage as a string
+- **GIVEN** a config file with `remember_usage = "no"`
+- **WHEN** `torpedo-settings --check` checks it
+- **THEN** the file is bad, and the problem names `remember_usage`
+
+#### Scenario: No remember_usage key
+- **GIVEN** a config file with only the trigger `::`, and no usage file exists
+- **WHEN** the user types `::fire:` at a boundary
+- **THEN** the usage file holds 🔥
