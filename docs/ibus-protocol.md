@@ -63,7 +63,13 @@ Only a panel can send a click. The daemon forwards the `CandidateClicked` signal
 - Modifier bits: Shift 1<<0, Lock 1<<1, Control 1<<2, Mod1 (Alt) 1<<3, Mod2 (Num Lock) 1<<4, Mod4 1<<6, Mod5 (AltGr) 1<<7, Super 1<<26, Hyper 1<<27, Meta 1<<28, Release 1<<30.
 - A client in sync mode sets `EffectivePostProcessKeyEvent`. The daemon then queues the signals that arrive while a key is in flight and hands them over with the reply (`bus_input_context_make_post_process_key_event`). For an async client, the CommitText signal and the ProcessKeyEvent reply are two messages on one connection.
 
-The order measurement of task 4.1 of `add-emoji-engine` follows in the next section.
+### Measured order (add-emoji-engine, task 4.1)
+
+The engine commits held text and then returns false for a key without a character. `e2e/harness/order.test.mjs` holds `:` and then sends Ctrl+a or Left with `process_key_event_async`, and records the arrival of each signal and of the reply in the client.
+
+On 2026-11-19, with IBus 1.5.34 and the release build, the CommitText signal arrived before the ProcessKeyEvent reply in 600 of 600 runs for Ctrl+a and in 600 of 600 runs for Left (three runs of 200 each). The engine emits the signal before it sends its reply, and the daemon forwards both in that order on its connection to the client.
+
+So torpedo keeps "commit, then return false" for keys without a character, and does not use ForwardKeyEvent. A character key that ends held text never depends on this order: torpedo commits the held text and the character together. The order between the two paths inside GNOME Shell is not measured.
 
 ## Client capabilities and surrounding text
 
