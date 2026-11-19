@@ -46,7 +46,10 @@ enum State {
     Idle,
     /// A proper prefix of `trigger` is held. The prefix keeps the trigger it
     /// was typed toward, so a config change cannot cut it short.
-    Prefix { held: String, trigger: Vec<char> },
+    Prefix {
+        held: String,
+        trigger: Vec<char>,
+    },
     /// The trigger is held with a query. `trigger` is the trigger as typed.
     Search {
         trigger: String,
@@ -1218,7 +1221,11 @@ mod tests {
         r.typed("::lg");
         assert!(r.list().is_some());
         let out = r.picker.set_config(config("::", &[("lgtm", "👍")]));
-        assert!(out.actions.iter().any(|a| matches!(a, Action::ShowCandidates { .. })));
+        assert!(
+            out.actions
+                .iter()
+                .any(|a| matches!(a, Action::ShowCandidates { .. }))
+        );
         assert_eq!(r.list().unwrap().0[0], "👍 lgtm");
     }
 
@@ -1236,4 +1243,3 @@ mod tests {
         assert!(one.picker.search_opened());
     }
 }
-

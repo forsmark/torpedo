@@ -435,7 +435,10 @@ mod tests {
     fn the_settings_command_comes_from_the_variable_first() {
         let exe = Path::new("/p/lib/torpedo/ibus-engine-torpedo");
         let set = |k: &str| (k == SETTINGS_COMMAND_VAR).then(|| OsString::from("/stub"));
-        assert_eq!(settings_command(set, Some(exe)), Some(PathBuf::from("/stub")));
+        assert_eq!(
+            settings_command(set, Some(exe)),
+            Some(PathBuf::from("/stub"))
+        );
         let empty = |k: &str| (k == SETTINGS_COMMAND_VAR).then(OsString::new);
         assert_eq!(
             settings_command(empty, Some(exe)),

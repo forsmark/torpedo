@@ -17,9 +17,26 @@
  * driver sees the end of stdin and does the same.
  *
  * close() also fails when ~/.config/ibus/bus/ changed while the session ran.
+ *
+ * openSession({ config, env, engine }) takes the text of a private config
+ * file, more variables for the daemon and the engine (null removes one), and
+ * another engine binary. Every session removes DISPLAY and WAYLAND_DISPLAY,
+ * and points TORPEDO_SETTINGS_COMMAND at a stub that records each start in
+ * <run>/settings-starts, so no test can open a window.
  */
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -44,15 +61,29 @@ export function liveBusListing(dir = LIVE_BUS_DIR) {
     .join('\n');
 }
 
-/** The environment of the private session: IBus and XDG paths in `run`. */
-export function privateEnv(run, env = process.env) {
+/** The stub settings command of a run, and the file it records starts in. */
+export const settingsStub = (run) => join(run, 'settings-stub');
+export const settingsStartsFile = (run) => join(run, 'settings-starts');
+
+/** The config file of a run. */
+export const configFile = (run) => join(run, 'config', 'torpedo', 'config.toml');
+
+/**
+ * The environment of the private session: IBus and XDG paths in `run`, no
+ * display, and a stub settings command. `extra` adds variables, and a null
+ * value removes one.
+ */
+export function privateEnv(run, env = process.env, extra = {}) {
   const out = { ...env };
   delete out.IBUS_ADDRESS;
-  return {
+  delete out.DISPLAY;
+  delete out.WAYLAND_DISPLAY;
+  const all = {
     ...out,
     TORPEDO_E2E_RUN: run,
     TORPEDO_E2E_OUTER_BUS: env.DBUS_SESSION_BUS_ADDRESS ?? '',
     TORPEDO_ENGINE: ENGINE,
+    TORPEDO_SETTINGS_COMMAND: settingsStub(run),
     IBUS_ADDRESS_FILE: join(run, 'addr'),
     XDG_CONFIG_HOME: join(run, 'config'),
     XDG_CACHE_HOME: join(run, 'cache'),
@@ -60,6 +91,25 @@ export function privateEnv(run, env = process.env) {
     GSETTINGS_BACKEND: 'memory',
     GIO_USE_VFS: 'local',
   };
+  for (const [k, v] of Object.entries(extra)) {
+    if (v === null) delete all[k];
+    else all[k] = v;
+  }
+  return all;
+}
+
+/** A script that appends a line to `log` each time it runs, and exits. */
+export function recordingStub(path, log) {
+  writeFileSync(path, `#!/bin/sh\necho started >> '${log}'\n`);
+  chmodSync(path, 0o755);
+}
+
+/** Write a file with a temp file and a rename, as the settings window does. */
+export function writeAtomically(path, text) {
+  mkdirSync(dirname(path), { recursive: true });
+  const tmp = `${path}.e2e-tmp`;
+  writeFileSync(tmp, text);
+  renameSync(tmp, path);
 }
 
 export class Session {
@@ -105,6 +155,38 @@ export class Session {
     return new App(this, reply);
   }
 
+  /** The private config file of this session. */
+  get configPath() {
+    return configFile(this.run);
+  }
+
+  /** Replace the config file in one step. */
+  writeConfig(text) {
+    writeAtomically(this.configPath, text);
+  }
+
+  /** Delete the config file. */
+  removeConfig() {
+    rmSync(this.configPath, { force: true });
+  }
+
+  /** How often the stub settings command started. */
+  settingsStarts() {
+    const f = settingsStartsFile(this.run);
+    return existsSync(f) ? readFileSync(f, 'utf8').trim().split('\n').length : 0;
+  }
+
+  /** The daemon's log, which holds the engine's stderr. */
+  engineLog() {
+    const f = join(this.run, 'daemon.log');
+    return existsSync(f) ? readFileSync(f, 'utf8') : '';
+  }
+
+  /** The panel activates a property, as a click in the input source menu. */
+  propertyActivate(name, state = 0) {
+    return this.send({ cmd: 'property_activate', name, state });
+  }
+
   /** Stop the driver, wait for it, and check the live address folder. */
   async close() {
     if (this.child.exitCode === null) {
@@ -121,14 +203,18 @@ export class Session {
 }
 
 /** Start a private session. */
-export async function openSession() {
-  if (!existsSync(ENGINE)) throw new Error(`no engine binary at ${ENGINE}. Run node scripts/e2e.mjs.`);
+export async function openSession({ config, env = {}, engine } = {}) {
+  const binary = engine ?? ENGINE;
+  if (!existsSync(binary)) throw new Error(`no engine binary at ${binary}. Run node scripts/e2e.mjs.`);
   const before = liveBusListing();
   const run = mkdtempSync('/tmp/tpd-');
+  recordingStub(settingsStub(run), settingsStartsFile(run));
+  if (config !== undefined) writeAtomically(configFile(run), config);
+  const extra = engine ? { TORPEDO_ENGINE: engine, ...env } : env;
   const child = spawn(
     'dbus-run-session',
     ['--config-file', join(HERE, 'session.conf'), '--', 'python3', '-I', join(HERE, 'driver.py')],
-    { env: privateEnv(run), stdio: ['pipe', 'pipe', 'pipe'], detached: true },
+    { env: privateEnv(run, process.env, extra), stdio: ['pipe', 'pipe', 'pipe'], detached: true },
   );
   const lines = createInterface({ input: child.stdout });
   const session = new Session(child, run, lines, before);

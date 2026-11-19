@@ -145,7 +145,9 @@ pub fn check_alias_text(text: &str) -> Result<(), String> {
         ));
     }
     if text.chars().any(char::is_control) {
-        return Err("the alias text may not hold a line break, a tab or another control character".into());
+        return Err(
+            "the alias text may not hold a line break, a tab or another control character".into(),
+        );
     }
     Ok(())
 }
@@ -373,18 +375,7 @@ impl ConfigDocument {
                 message,
             }])
         })?;
-        self.try_edit(|doc| match doc.get_mut(TRIGGER_KEY) {
-            Some(item) if item.is_value() => {
-                let decor = item.as_value().map(|v| v.decor().clone());
-                *item = value(trigger);
-                if let (Some(decor), Some(v)) = (decor, item.as_value_mut()) {
-                    *v.decor_mut() = decor;
-                }
-            }
-            _ => {
-                doc.insert(TRIGGER_KEY, value(trigger));
-            }
-        })
+        self.try_edit(|doc| replace_value(doc, TRIGGER_KEY, trigger))
     }
 
     /// Add an alias, or change the text of the alias with this name in any
@@ -396,12 +387,7 @@ impl ConfigDocument {
             let table = ConfigDocument::aliases_mut(doc);
             match existing {
                 Some(old) if old == name => {
-                    let item = table.get_mut(name).expect("the alias exists");
-                    let decor = item.as_value().map(|v| v.decor().clone());
-                    *item = value(text);
-                    if let (Some(decor), Some(v)) = (decor, item.as_value_mut()) {
-                        *v.decor_mut() = decor;
-                    }
+                    set_keeping_decor(table.get_mut(name).expect("the alias exists"), text);
                 }
                 Some(old) => {
                     table.remove(&old);
@@ -455,6 +441,32 @@ impl ConfigDocument {
         })
     }
 
+    /// A copy with this trigger and exactly these aliases, unchecked. Aliases
+    /// that keep their name keep their place and comments. Use `save`, which
+    /// checks the whole result, to write it.
+    pub fn with_values(&self, trigger: &str, aliases: &[Alias]) -> ConfigDocument {
+        let mut doc = self.doc.clone();
+        replace_value(&mut doc, TRIGGER_KEY, trigger);
+        let table = ConfigDocument::aliases_mut(&mut doc);
+        let gone: Vec<String> = table
+            .iter()
+            .map(|(k, _)| k.to_string())
+            .filter(|k| !aliases.iter().any(|a| &a.name == k))
+            .collect();
+        for k in gone {
+            table.remove(&k);
+        }
+        for a in aliases {
+            match table.get_mut(&a.name) {
+                Some(item) => set_keeping_decor(item, &a.text),
+                None => {
+                    table.insert(&a.name, value(a.text.as_str()));
+                }
+            }
+        }
+        ConfigDocument { doc }
+    }
+
     /// Write the document to `path` in one step: a temp file in the same
     /// folder, synced, then renamed over the file. A reader sees the old file
     /// or the new one, never part of one. It refuses a bad document.
@@ -462,6 +474,23 @@ impl ConfigDocument {
         let text = self.text();
         parse(&text).map_err(|p| SaveError::Refused(Refused(p)))?;
         write_atomically(path, &text).map_err(|e| SaveError::Io(e.to_string()))
+    }
+}
+
+fn set_keeping_decor(item: &mut Item, text: &str) {
+    let decor = item.as_value().map(|v| v.decor().clone());
+    *item = value(text);
+    if let (Some(decor), Some(v)) = (decor, item.as_value_mut()) {
+        *v.decor_mut() = decor;
+    }
+}
+
+fn replace_value(doc: &mut DocumentMut, key: &str, text: &str) {
+    match doc.get_mut(key) {
+        Some(item) if item.is_value() => set_keeping_decor(item, text),
+        _ => {
+            doc.insert(key, value(text));
+        }
     }
 }
 
@@ -539,7 +568,11 @@ mod tests {
     use super::*;
 
     fn bad_keys(text: &str) -> Vec<String> {
-        parse(text).unwrap_err().into_iter().map(|p| p.key).collect()
+        parse(text)
+            .unwrap_err()
+            .into_iter()
+            .map(|p| p.key)
+            .collect()
     }
 
     fn temp_dir(name: &str) -> PathBuf {
@@ -586,8 +619,10 @@ mod tests {
 
     #[test]
     fn aliases_are_read_and_sorted_by_lower_case_name() {
-        let c = parse("[aliases]\nzz = \"🤖\"\nLGTM = \"👍\"\nshrug = '¯\\_(ツ)_/¯'\n\"+2\" = \"👍👍\"\n")
-            .unwrap();
+        let c = parse(
+            "[aliases]\nzz = \"🤖\"\nLGTM = \"👍\"\nshrug = '¯\\_(ツ)_/¯'\n\"+2\" = \"👍👍\"\n",
+        )
+        .unwrap();
         let names: Vec<&str> = c.aliases.iter().map(|a| a.name.as_str()).collect();
         assert_eq!(names, ["+2", "LGTM", "shrug", "zz"]);
         assert_eq!(c.aliases[2].text, "¯\\_(ツ)_/¯");
@@ -763,7 +798,10 @@ mod tests {
 
     #[test]
     fn a_document_that_does_not_parse_is_refused() {
-        assert_eq!(ConfigDocument::parse("trigger = \"").unwrap_err().0[0].line, Some(1));
+        assert_eq!(
+            ConfigDocument::parse("trigger = \"").unwrap_err().0[0].line,
+            Some(1)
+        );
     }
 
     #[test]
@@ -810,5 +848,31 @@ mod tests {
             Err(LoadError::Refused(_))
         ));
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn with_values_sets_exactly_these_values_and_keeps_the_rest() {
+        let d = ConfigDocument::parse(KEPT).unwrap();
+        let next = d.with_values(
+            ";;",
+            &[
+                Alias {
+                    name: "lgtm".into(),
+                    text: "✅".into(),
+                },
+                Alias {
+                    name: "ship".into(),
+                    text: "🚀".into(),
+                },
+            ],
+        );
+        kept(&next.text());
+        let c = next.config().unwrap();
+        assert_eq!(c.trigger, ";;");
+        assert_eq!(c.aliases.len(), 2);
+        let none = next.with_values("::", &[]);
+        assert!(none.config().unwrap().aliases.is_empty());
+        let bad = d.with_values("ab", &[]);
+        assert!(bad.config().is_err());
     }
 }

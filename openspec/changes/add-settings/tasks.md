@@ -19,13 +19,13 @@
 
 ## 4. The harness
 
-- [ ] 4.1 Extend `e2e/harness/session.mjs`: `openSession({ config, env })`, the default stub for `TORPEDO_SETTINGS_COMMAND`, removal of `DISPLAY` and `WAYLAND_DISPLAY` in `privateEnv`, `writeConfig`, `removeConfig`, `settingsStarts()` and `engineLog()`. Extend `driver.py`: make the panel a subclass of `IBus.PanelService` that records `do_register_properties` as an event, and add a `property_activate` command. Let `openSession` remove `TORPEDO_SETTINGS_COMMAND` and take another `TORPEDO_ENGINE` for the default-command test. Verify with `e2e/harness/harness.test.mjs` cases for each helper, and that `pgrep -af ibus-daemon` then shows only PID 7674.
-- [ ] 4.2 Make `scripts/e2e.mjs` build `torpedo-settings` along with the engine, and update `scripts/e2e.test.mjs`. Verify with `node --test "scripts/**/*.test.mjs"`.
+- [x] 4.1 Extend `e2e/harness/session.mjs`: `openSession({ config, env })`, the default stub for `TORPEDO_SETTINGS_COMMAND`, removal of `DISPLAY` and `WAYLAND_DISPLAY` in `privateEnv`, `writeConfig`, `removeConfig`, `settingsStarts()` and `engineLog()`. Extend `driver.py`: make the panel a subclass of `IBus.PanelService` that records `do_register_properties` as an event, and add a `property_activate` command. Let `openSession` remove `TORPEDO_SETTINGS_COMMAND` and take another `TORPEDO_ENGINE` for the default-command test. Verify with `e2e/harness/harness.test.mjs` cases for each helper, and that `pgrep -af ibus-daemon` then shows only PID 7674.
+- [x] 4.2 Make `scripts/e2e.mjs` build `torpedo-settings` along with the engine, and update `scripts/e2e.test.mjs`. Verify with `node --test "scripts/**/*.test.mjs"`.
 
 ## 5. The settings window
 
-- [ ] 5.1 Add `crates/torpedo-settings` with `gtk4` 0.10 and `libadwaita` 0.8, and the binary `torpedo-settings`. Parse the arguments first. Implement `--check`, `--set-trigger`, `--set-alias`, `--remove-alias` and `--config` through `torpedo_core::config`, with no GTK call on that path. Verify with `cargo test -p torpedo-settings` for the argument parsing, and by running `--check` with `DISPLAY` and `WAYLAND_DISPLAY` unset.
-- [ ] 5.2 Build the window: a single-instance `adw::Application`, the trigger row, the alias rows with add and delete, a problem shown under each bad field, a save on each good apply, and a read-only banner for a file that does not parse. Verify with `cargo clippy -p torpedo-settings --all-targets -- -D warnings`. Do not start the window in any test or on the owner's display.
+- [x] 5.1 Add `crates/torpedo-settings` with `gtk4` 0.10 and `libadwaita` 0.8, and the binary `torpedo-settings`. Parse the arguments first. Implement `--check`, `--set-trigger`, `--set-alias`, `--remove-alias` and `--config` through `torpedo_core::config`, with no GTK call on that path. Verify with `cargo test -p torpedo-settings` for the argument parsing, and by running `--check` with `DISPLAY` and `WAYLAND_DISPLAY` unset.
+- [x] 5.2 Build the window: a single-instance `adw::Application`, the trigger row, the alias rows with add and delete, a problem shown under each bad field, a save on each good apply, and a read-only banner for a file that does not parse. Verify with `cargo clippy -p torpedo-settings --all-targets -- -D warnings`. Do not start the window in any test or on the owner's display.
 
 ## 6. Install
 

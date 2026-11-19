@@ -1,0 +1,11 @@
+[package]
+name = "torpedo-settings"
+description = "The settings window of torpedo: the trigger and the aliases."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+adw = { package = "libadwaita", version = "0.8", features = ["v1_5"] }
+gtk = { package = "gtk4", version = "0.10", features = ["v4_12"] }
+torpedo-core = { path = "../torpedo-core" }

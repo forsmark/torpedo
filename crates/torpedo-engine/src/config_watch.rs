@@ -175,7 +175,10 @@ mod tests {
         assert_eq!(w.check(), None);
         assert_eq!(w.config().aliases.len(), 1);
         let log = LOG.lock().unwrap().join("\n");
-        assert!(log.contains(&format!("config {}: line 1:", path.display())), "{log}");
+        assert!(
+            log.contains(&format!("config {}: line 1:", path.display())),
+            "{log}"
+        );
         fs::remove_dir_all(d).unwrap();
     }
 

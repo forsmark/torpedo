@@ -319,15 +319,23 @@ mod tests {
     #[test]
     fn a_query_that_matches_only_an_alias() {
         assert!(search("zzb").is_empty());
-        assert_eq!(search_with("zzb", &[alias("zzbot", "🤖")]), [pair("🤖", "zzbot")]);
+        assert_eq!(
+            search_with("zzb", &[alias("zzbot", "🤖")]),
+            [pair("🤖", "zzbot")]
+        );
     }
 
     #[test]
     fn a_text_alias_is_its_own_entry() {
         let shrug = "¯\\_(ツ)_/¯";
-        assert_eq!(search_with("shrug", &[alias("shrug", shrug)])[0], pair(shrug, "shrug"));
         assert_eq!(
-            EmojiIndex::gemoji().exact_with("shrug", &[alias("shrug", shrug)]).as_deref(),
+            search_with("shrug", &[alias("shrug", shrug)])[0],
+            pair(shrug, "shrug")
+        );
+        assert_eq!(
+            EmojiIndex::gemoji()
+                .exact_with("shrug", &[alias("shrug", shrug)])
+                .as_deref(),
             Some(shrug)
         );
     }
