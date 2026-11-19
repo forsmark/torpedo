@@ -45,7 +45,7 @@ shrug = '¯\_(ツ)_/¯'
 - `trigger` is a top-level string. `[aliases]` is a table of strings.
 - `¯\_(ツ)_/¯` needs a literal string in single quotes, or `\\` in a basic string, because `\_` is not a TOML escape. The settings window writes a basic string with the escapes that `toml_edit` picks, so the user never has to know this.
 - A name with `+` or `-` at the start needs a quoted key. `toml_edit` quotes keys when needed.
-- A length counts Unicode code points (`char` in Rust). `¯\_(ツ)_/¯` is 9. The longest gemoji emoji, a flag with tag characters, is 7. 16 leaves room for a short sequence of emoji.
+- A length counts Unicode code points (`char` in Rust). `¯\_(ツ)_/¯` is 9. The longest gemoji emoji, `couplekiss_man_woman`, is 8. 16 leaves room for a short sequence of emoji.
 - An alias text may hold no control character, so a commit can never hold a line break or a tab.
 
 ### One bad value makes the whole file bad
@@ -139,14 +139,15 @@ The window's apply handlers call the same `ConfigDocument` functions as these fl
 - It writes `$PREFIX/share/applications/ibus-setup-torpedo.desktop` without sudo, with `Name=Torpedo Settings`, `Exec=<absolute path>`, `Icon=preferences-desktop-keyboard`, `Type=Application` and `Categories=Settings;`. `PREFIX` defaults to `~/.local`, so the file lands in `~/.local/share/applications`. The tests already point `PREFIX` at a temp folder.
 - The component file gets `<setup>` with the absolute path of the settings window, inside `<engine>`. It still goes through the one `$SUDO install` call, so the existing test of exactly one sudo call holds.
 - `uninstall.sh` removes both binaries, the folder and the desktop file, and the component file through `$SUDO`.
-- The next steps add one paragraph: the settings window is "Torpedo Settings" in the app launcher, the settings button of the input source in GNOME Settings, and "Torpedo settings" in the input source menu of the top bar.
+- The next steps say that the component file is the one file that needs sudo, and that `install.sh` asks for the password once to copy it. A run of `install.sh` after an update copies it again, because it now holds `<setup>`.
+- After the steps, one paragraph says that the settings window is "Torpedo Settings" in the app launcher, the settings button of the input source in GNOME Settings, and "Torpedo settings" in the input source menu of the top bar.
 
 ### The e2e harness
 
 - `openSession({ config, env })`. `config` is the text of `config.toml`, written to `<run>/config/torpedo/config.toml` before the daemon starts. `env` adds variables, such as `TORPEDO_DEBUG=1`.
-- `privateEnv` always sets `TORPEDO_SETTINGS_COMMAND` to a stub script in the run folder that appends a line to `<run>/settings-starts` and exits. A test that needs a long-running stub passes its own. `privateEnv` also removes `DISPLAY` and `WAYLAND_DISPLAY`. The daemon and the engine need neither, and with them gone no test can start a window on the owner's display.
+- `privateEnv` always sets `TORPEDO_SETTINGS_COMMAND` to a stub script in the run folder that appends a line to `<run>/settings-starts` and exits. A test that needs a long-running stub passes its own. A test of the default command passes `TORPEDO_SETTINGS_COMMAND: null`, which removes the variable, and a `TORPEDO_ENGINE` that is a copy of the engine in a temp folder, with a recording stub named `torpedo-settings` next to it. `privateEnv` also removes `DISPLAY` and `WAYLAND_DISPLAY`. The daemon and the engine need neither, and with them gone no test can start a window on the owner's display.
 - `session.writeConfig(text)` and `session.removeConfig()` change the file during a test. `writeConfig` writes a temp file and renames it, as the window does.
-- The driver connects the panel's `register-properties` signal and records the property list as an event. A new command `property_activate` emits `PropertyActivate` from the panel, as `click` emits `CandidateClicked`.
+- The driver's panel becomes a Python subclass of `IBus.PanelService` that overrides `do_register_properties` and records the property list as an event. PyGObject offers no `register-properties` signal on `PanelService`, only the virtual method. A new command `property_activate` emits `PropertyActivate` from the panel, as `click` emits `CandidateClicked`.
 - `session.engineLog()` reads the engine's stderr from `daemon.log`, which `--verbose` fills.
 - Settings tests run `target/release/torpedo-settings` with a private `HOME` and `XDG_CONFIG_HOME`, and with `DISPLAY` and `WAYLAND_DISPLAY` removed. A helper refuses to run it when either is set.
 - `scripts/e2e.mjs` builds `torpedo-settings` along with the engine.

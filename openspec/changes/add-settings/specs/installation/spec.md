@@ -25,15 +25,19 @@
 - **AND** the script writes nothing
 
 ### Requirement: Install prints the next steps
-`install.sh` SHALL end by printing the owner's next steps: restart IBus with `ibus restart`, then add Torpedo as an input source in GNOME Settings and keep Danish as a fallback. It SHALL then say that the settings window opens from the app launcher, from the input source in GNOME Settings and from the input source menu.
+`install.sh` SHALL print the owner's next steps: restart IBus with `ibus restart`, then add Torpedo as an input source in GNOME Settings and keep Danish as a fallback. It SHALL say that the component file is the one file it copied with sudo. It SHALL end by saying that the settings window opens from the app launcher, from the input source in GNOME Settings and from the input source menu.
 
 #### Scenario: The next steps after install
 - **WHEN** the owner runs `install.sh`
-- **THEN** the output ends with the steps `ibus restart`, adding Torpedo in GNOME Settings, and keeping Danish as a fallback
+- **THEN** the output names, in order, the steps `ibus restart`, adding Torpedo in GNOME Settings, and keeping Danish as a fallback
+
+#### Scenario: The sudo copy in the next steps
+- **WHEN** the owner runs `install.sh`
+- **THEN** the output says that the component file is the one file copied with sudo
 
 #### Scenario: The settings window in the next steps
 - **WHEN** the owner runs `install.sh`
-- **THEN** the output after the steps names "Torpedo Settings" in the app launcher, GNOME Settings and the input source menu
+- **THEN** the output ends with a paragraph that names "Torpedo Settings" in the app launcher, GNOME Settings and the input source menu
 
 ### Requirement: Uninstall removes what install added
 `uninstall.sh` SHALL remove the installed binary, the settings window, their folder and the desktop file, and remove the component file through `$SUDO`. It SHALL print the owner's next steps: remove Torpedo from the input sources and restart IBus.

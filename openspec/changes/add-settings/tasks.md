@@ -19,7 +19,7 @@
 
 ## 4. The harness
 
-- [ ] 4.1 Extend `e2e/harness/session.mjs`: `openSession({ config, env })`, the default stub for `TORPEDO_SETTINGS_COMMAND`, removal of `DISPLAY` and `WAYLAND_DISPLAY` in `privateEnv`, `writeConfig`, `removeConfig`, `settingsStarts()` and `engineLog()`. Extend `driver.py` with the panel's `register-properties` event and a `property_activate` command. Verify with `e2e/harness/harness.test.mjs` cases for each helper, and that `pgrep -af ibus-daemon` then shows only PID 7674.
+- [ ] 4.1 Extend `e2e/harness/session.mjs`: `openSession({ config, env })`, the default stub for `TORPEDO_SETTINGS_COMMAND`, removal of `DISPLAY` and `WAYLAND_DISPLAY` in `privateEnv`, `writeConfig`, `removeConfig`, `settingsStarts()` and `engineLog()`. Extend `driver.py`: make the panel a subclass of `IBus.PanelService` that records `do_register_properties` as an event, and add a `property_activate` command. Let `openSession` remove `TORPEDO_SETTINGS_COMMAND` and take another `TORPEDO_ENGINE` for the default-command test. Verify with `e2e/harness/harness.test.mjs` cases for each helper, and that `pgrep -af ibus-daemon` then shows only PID 7674.
 - [ ] 4.2 Make `scripts/e2e.mjs` build `torpedo-settings` along with the engine, and update `scripts/e2e.test.mjs`. Verify with `node --test "scripts/**/*.test.mjs"`.
 
 ## 5. The settings window
@@ -36,7 +36,7 @@
 - [ ] 7.1 Add `e2e/config-file/*.test.mjs` with one test for each scenario of `config-file`, through the private daemon with a private config file, or through `torpedo-settings --check` with no display. Add `e2e/coverage/config-file.json`. Verify with `node scripts/e2e.mjs` and `node tools/spec-checks/bin/spec-checks coverage`.
 - [ ] 7.2 Add `e2e/settings-window/*.test.mjs` with one test for each scenario of `settings-window` that a test can show: the save rules through the mode without a window, and the property scenarios through the panel. Add `e2e/coverage/settings-window.json`, with `none` and a reason for the five window-only scenarios that design.md lists. Verify as in 7.1.
 - [ ] 7.3 Add the new `inline-picker` scenarios to `e2e/inline-picker/` (a new `trigger.test.mjs` and `aliases.test.mjs`), and update `e2e/coverage/inline-picker.json` for the renamed requirement *The trigger is configurable* and the new and changed scenarios. Verify as in 7.1.
-- [ ] 7.4 Update `e2e/installation.test.mjs` for the new and changed `installation` scenarios: the settings binary, the desktop file and its name, `<setup>`, no sudo for the desktop file, uninstall of both, and the next steps. Update `e2e/coverage/installation.json`. Verify as in 7.1.
+- [ ] 7.4 Update `e2e/installation.test.mjs` for the new and changed `installation` scenarios: the settings binary, the desktop file and its name, `<setup>`, no sudo for the desktop file, uninstall of both, the sudo line and the settings paragraph. *The next steps after install* now checks the order of the steps, not the last six lines, because the settings paragraph comes after them. Update `e2e/coverage/installation.json`. Verify as in 7.1.
 
 ## 8. Words and docs
 

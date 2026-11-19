@@ -121,6 +121,11 @@ The engine SHALL register an IBus property with the label "Torpedo settings" whe
 - **WHEN** the panel activates the property "Torpedo settings"
 - **THEN** the command was started once
 
+#### Scenario: The default settings command
+- **GIVEN** `TORPEDO_SETTINGS_COMMAND` is not set, and the engine's folder holds a `torpedo-settings` that records each start
+- **WHEN** the panel activates the property "Torpedo settings"
+- **THEN** that `torpedo-settings` was started once
+
 #### Scenario: Typing goes on while the settings command runs
 - **GIVEN** `TORPEDO_SETTINGS_COMMAND` names a command that keeps running
 - **WHEN** the panel activates the property "Torpedo settings", and the user types `::fire:` at a boundary
