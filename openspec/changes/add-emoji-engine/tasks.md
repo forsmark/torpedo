@@ -23,15 +23,15 @@
 
 ## 4. The picker in the engine
 
-- [ ] 4.1 Measure the wire order: make the engine commit the held text and return false for a key without a character, and add `e2e/harness/order.test.mjs`, which sends Ctrl+`a` after `:` 200 times with `process_key_event_async` and records whether `commit-text` arrives before the reply. Record the result in `docs/ibus-protocol.md`, and pick the branch in design.md "Committed text and passed keys keep their order". Verify that the test passes for the chosen branch.
-- [ ] 4.2 Wire the picker into the Engine object: key events, focus-in, focus-out, reset, disable, surrounding text, candidate clicks, and the panel's cursor and page calls. Send the preedit with mode COMMIT while text is held, and clear it with mode CLEAR before the engine commits. Verify with `cargo test --workspace`.
-- [ ] 4.3 Add the e2e tests for `inline-picker`, one test for each scenario, grouped by requirement in files under `e2e/inline-picker/`. Add `e2e/coverage/inline-picker.json` mapping each one. Verify with `node scripts/e2e.mjs` and `node tools/spec-checks/bin/spec-checks coverage`. Then check that `pgrep -af ibus-daemon` shows only PID 7674 and that `~/.config/ibus/bus/` is unchanged.
+- [x] 4.1 Measure the wire order: make the engine commit the held text and return false for a key without a character, and add `e2e/harness/order.test.mjs`, which sends Ctrl+`a` after `:` 200 times with `process_key_event_async` and records whether `commit-text` arrives before the reply. Record the result in `docs/ibus-protocol.md`, and pick the branch in design.md "Committed text and passed keys keep their order". Verify that the test passes for the chosen branch.
+- [x] 4.2 Wire the picker into the Engine object: key events, focus-in, focus-out, reset, disable, surrounding text, candidate clicks, and the panel's cursor and page calls. Send the preedit with mode COMMIT while text is held, and clear it with mode CLEAR before the engine commits. Verify with `cargo test --workspace`.
+- [x] 4.3 Add the e2e tests for `inline-picker`, one test for each scenario, grouped by requirement in files under `e2e/inline-picker/`. Add `e2e/coverage/inline-picker.json` mapping each one. Verify with `node scripts/e2e.mjs` and `node tools/spec-checks/bin/spec-checks coverage`. Then check that `pgrep -af ibus-daemon` shows only PID 7674 and that `~/.config/ibus/bus/` is unchanged.
 
 ## 5. Installation
 
-- [ ] 5.1 Add `install.sh` and `uninstall.sh` as design.md describes, with `PREFIX`, `COMPONENT_DIR`, `SUDO` and `--dry-run`. Verify with `sh -n` on both and with `./install.sh --dry-run`, which writes nothing.
-- [ ] 5.2 Add `e2e/installation.test.mjs` with one test for each scenario of `installation`, using a temp folder, recording stubs and the guard on the three variables. Add `e2e/coverage/installation.json`. Verify with `node scripts/e2e.mjs` and `node tools/spec-checks/bin/spec-checks coverage`.
-- [ ] 5.3 Add the install and uninstall commands and the harness to `AGENTS.md`, and say that only the owner runs `install.sh` against the real system. Verify that each listed command runs as written in `--dry-run` or against a temp folder.
+- [x] 5.1 Add `install.sh` and `uninstall.sh` as design.md describes, with `PREFIX`, `COMPONENT_DIR`, `SUDO` and `--dry-run`. Verify with `sh -n` on both and with `./install.sh --dry-run`, which writes nothing.
+- [x] 5.2 Add `e2e/installation.test.mjs` with one test for each scenario of `installation`, using a temp folder, recording stubs and the guard on the three variables. Add `e2e/coverage/installation.json`. Verify with `node scripts/e2e.mjs` and `node tools/spec-checks/bin/spec-checks coverage`.
+- [x] 5.3 Add the install and uninstall commands and the harness to `AGENTS.md`, and say that only the owner runs `install.sh` against the real system. Verify that each listed command runs as written in `--dry-run` or against a temp folder.
 
 ## 6. Integration
 

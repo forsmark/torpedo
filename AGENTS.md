@@ -9,6 +9,9 @@ Stack: Rust (stable, via rustup) and Cargo. IBus input method engine over D-Bus 
 - `crates/torpedo-core` is a library for the pure logic: trigger detection, search and config. It uses no D-Bus and no GTK.
 - `crates/torpedo-engine` is the binary of the IBus engine.
 - `e2e/` holds the scenario tests. They are `node --test` files that drive the real engine binary through a private IBus daemon. The coverage map in `e2e/coverage/` links each spec scenario to one of them.
+- `e2e/harness/` runs that daemon. `session.mjs` starts `dbus-run-session` with `session.conf` and runs `driver.py` in it. The driver starts a private ibus-daemon, acts as the IBus client and panel, and answers JSON commands. `app.mjs` folds its events into the app's text. Use `openSession()` and never start an ibus-daemon another way.
+- `docs/ibus-protocol.md` holds what torpedo knows about the IBus protocol.
+- `install.sh` and `uninstall.sh` install the engine for the owner.
 - Rust `#[test]`s cover internals. They map to no scenario.
 
 ## Commands
@@ -22,7 +25,9 @@ Rust is installed per user. Run `source ~/.cargo/env` before you call cargo by h
 - `cargo check --workspace --all-targets` is the typecheck step.
 - `node scripts/heavy-lock.mjs cargo test --workspace` runs the Rust tests.
 - `node scripts/heavy-lock.mjs cargo build --workspace` builds the crates.
-- `node scripts/e2e.mjs` runs the scenario tests under `e2e/`. It passes with a note while there are none.
+- `node scripts/e2e.mjs` builds the release engine and runs the scenario tests under `e2e/`, one file at a time.
+- `node --test e2e/<file>.test.mjs` runs one scenario test file. Build the engine first with `node scripts/heavy-lock.mjs cargo build --release -p torpedo-engine`.
+- `./install.sh --dry-run` and `./uninstall.sh --dry-run` print what the scripts would do and write nothing. Only the owner runs `./install.sh` or `./uninstall.sh` for real. They take `PREFIX`, `COMPONENT_DIR` and `SUDO`, and the tests set all three to a temp folder.
 - `pnpm install` installs the Node dev dependencies. The coverage check needs TypeScript from them.
 
 Heavy jobs wait for one machine-wide lock. Start other heavy commands with `node scripts/heavy-lock.mjs <command>`. The verify and e2e scripts take the lock themselves.
