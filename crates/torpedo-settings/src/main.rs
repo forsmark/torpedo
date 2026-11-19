@@ -1,6 +1,6 @@
 //! The settings window of torpedo.
 //!
-//! It edits the trigger and the aliases in the config file, with the rules of
+//! It edits the config file and clears the usage file, with the rules of
 //! `torpedo_core::config`. With an action such as `--check` it opens no
 //! window and needs no display. See `cli::USAGE`.
 
@@ -38,6 +38,7 @@ fn main() -> ExitCode {
             };
         }
         cli::Mode::Check { config } => cli::resolve(config).map(|p| cli::check(&p)),
+        cli::Mode::ClearUsage => cli::resolve_usage().map(|p| cli::clear_usage(&p)),
         cli::Mode::Edit { config, edits } => cli::resolve(config).map(|p| cli::edit(&p, &edits)),
     };
     match report {

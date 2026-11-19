@@ -1,4 +1,4 @@
-//! The settings window: the trigger and the aliases.
+//! The settings window: the trigger, the aliases, the skin tone and usage.
 //!
 //! Each good edit saves at once, as libadwaita preference windows do. A bad
 //! value shows its problem under its field, and nothing is written while any
@@ -12,7 +12,9 @@ use std::rc::Rc;
 
 use adw::prelude::*;
 use gtk::glib;
-use torpedo_core::config::{self, Alias, ConfigDocument, DEFAULT_TRIGGER, LoadError};
+use torpedo_core::config::{self, Alias, ConfigDocument, DEFAULT_TRIGGER, LoadError, Values};
+use torpedo_core::tone::{self, SkinTone};
+use torpedo_core::usage;
 
 /// The application id. A second start shows the open window.
 pub const APP_ID: &str = "io.github.forsmark.Torpedo.Settings";
@@ -100,16 +102,31 @@ struct AliasRow {
     error: gtk::Label,
 }
 
+/// The label of a skin tone in the selector: a 👋 in that tone and its name.
+pub fn tone_label(t: SkinTone) -> String {
+    let name = match t {
+        SkinTone::None => "None",
+        SkinTone::Light => "Light",
+        SkinTone::MediumLight => "Medium-light",
+        SkinTone::Medium => "Medium",
+        SkinTone::MediumDark => "Medium-dark",
+        SkinTone::Dark => "Dark",
+    };
+    format!("{} {name}", tone::apply("👋", t))
+}
+
 struct Ui {
     path: PathBuf,
     trigger: adw::EntryRow,
+    skin_tone: adw::ComboRow,
+    remember: adw::SwitchRow,
     trigger_error: gtk::Label,
     list: gtk::ListBox,
     rows: Vec<AliasRow>,
     toasts: adw::ToastOverlay,
     banner: adw::Banner,
     /// The values last read or written, so an unchanged field saves nothing.
-    saved: Option<(String, Vec<Alias>)>,
+    saved: Option<Values>,
 }
 
 type Shared = Rc<RefCell<Ui>>;
@@ -178,7 +195,15 @@ fn save(ui: &Shared) {
     if !checked.can_save() {
         return;
     }
-    let values = (trigger.clone(), checked.aliases.clone());
+    let values = Values {
+        trigger: trigger.clone(),
+        aliases: checked.aliases.clone(),
+        skin_tone: SkinTone::ALL
+            .get(ui.skin_tone.selected() as usize)
+            .copied()
+            .unwrap_or_default(),
+        remember_usage: ui.remember.is_active(),
+    };
     if ui.saved.as_ref() == Some(&values) {
         return;
     }
@@ -193,7 +218,7 @@ fn save(ui: &Shared) {
             return;
         }
     };
-    match base.with_values(&trigger, &checked.aliases).save(&ui.path) {
+    match base.with_values(&values).save(&ui.path) {
         Ok(()) => {
             ui.banner.set_revealed(false);
             ui.toasts.add_toast(adw::Toast::new("Saved"));
@@ -309,8 +334,36 @@ fn build(app: &adw::Application, path: &Path) {
     list.add_css_class("boxed-list");
     alias_group.add(&list);
 
+    let emoji_group = adw::PreferencesGroup::builder().title("Emoji").build();
+    let labels: Vec<String> = SkinTone::ALL.iter().map(|t| tone_label(*t)).collect();
+    let label_refs: Vec<&str> = labels.iter().map(String::as_str).collect();
+    let skin_tone = adw::ComboRow::builder()
+        .title("Skin tone")
+        .subtitle("For hands and people. Your aliases stay as you wrote them.")
+        .model(&gtk::StringList::new(&label_refs))
+        .build();
+    let remember = adw::SwitchRow::builder()
+        .title("Remember used emoji")
+        .subtitle("Show the emoji you use most first")
+        .active(true)
+        .build();
+    let clear = gtk::Button::builder()
+        .label("Clear…")
+        .valign(gtk::Align::Center)
+        .build();
+    clear.add_css_class("destructive-action");
+    let clear_row = adw::ActionRow::builder()
+        .title("Clear usage")
+        .subtitle("Forget which emoji you used")
+        .build();
+    clear_row.add_suffix(&clear);
+    emoji_group.add(&skin_tone);
+    emoji_group.add(&remember);
+    emoji_group.add(&clear_row);
+
     page.add(&trigger_group);
     page.add(&alias_group);
+    page.add(&emoji_group);
 
     let body = gtk::Box::new(gtk::Orientation::Vertical, 0);
     body.append(&banner);
@@ -324,6 +377,8 @@ fn build(app: &adw::Application, path: &Path) {
     let ui: Shared = Rc::new(RefCell::new(Ui {
         path: path.to_path_buf(),
         trigger: trigger.clone(),
+        skin_tone: skin_tone.clone(),
+        remember: remember.clone(),
         trigger_error,
         list,
         rows: Vec::new(),
@@ -341,8 +396,17 @@ fn build(app: &adw::Application, path: &Path) {
             for a in doc.raw_aliases() {
                 add_row(&ui, &a.name, &a.text);
             }
+            let tone = doc.raw_skin_tone().unwrap_or_default();
+            let at = SkinTone::ALL.iter().position(|t| *t == tone).unwrap_or(0);
+            skin_tone.set_selected(at as u32);
+            remember.set_active(doc.raw_remember_usage().unwrap_or(true));
             if let Ok(c) = doc.config() {
-                ui.borrow_mut().saved = Some((c.trigger, doc.raw_aliases()));
+                ui.borrow_mut().saved = Some(Values {
+                    trigger: c.trigger,
+                    aliases: doc.raw_aliases(),
+                    skin_tone: c.skin_tone,
+                    remember_usage: c.remember_usage,
+                });
             }
             if doc.config().is_err() {
                 // Show where each bad value is. Nothing is written until all
@@ -367,6 +431,10 @@ fn build(app: &adw::Application, path: &Path) {
     let u = ui.clone();
     trigger.connect_apply(move |_| save_soon(&u));
     let u = ui.clone();
+    skin_tone.connect_selected_notify(move |_| save_soon(&u));
+    let u = ui.clone();
+    remember.connect_active_notify(move |_| save_soon(&u));
+    let u = ui.clone();
     add.connect_clicked(move |_| {
         let entry = add_row(&u, "", "");
         entry.grab_focus();
@@ -379,7 +447,39 @@ fn build(app: &adw::Application, path: &Path) {
         .default_height(640)
         .content(&view)
         .build();
+
+    let w = window.clone();
+    let row = clear_row.clone();
+    clear.connect_clicked(move |_| confirm_clear_usage(&w, &row));
     window.present();
+}
+
+/// Ask in the window whether to clear the usage, and delete the usage file
+/// only when the user confirms.
+fn confirm_clear_usage(window: &adw::ApplicationWindow, row: &adw::ActionRow) {
+    let dialog = adw::AlertDialog::new(
+        Some("Clear usage?"),
+        Some("Torpedo forgets which emoji you used, and the search goes back to its usual order."),
+    );
+    dialog.add_responses(&[("cancel", "Cancel"), ("clear", "Clear")]);
+    dialog.set_response_appearance("clear", adw::ResponseAppearance::Destructive);
+    dialog.set_default_response(Some("cancel"));
+    dialog.set_close_response("cancel");
+    let row = row.clone();
+    dialog.connect_response(Some("clear"), move |_, _| {
+        let result = usage::default_usage_path()
+            .ok_or_else(|| "neither XDG_STATE_HOME nor HOME is set".to_string())
+            .and_then(|p| match std::fs::remove_file(&p) {
+                Ok(()) => Ok(()),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+                Err(e) => Err(format!("cannot delete {}: {e}", p.display())),
+            });
+        match result {
+            Ok(()) => row.set_subtitle("Usage cleared"),
+            Err(e) => row.set_subtitle(&format!("Not cleared: {e}")),
+        }
+    });
+    dialog.present(Some(window));
 }
 
 /// Open the window on the config file at `path`.
@@ -446,5 +546,12 @@ mod tests {
         let c = check_values("::", &r);
         assert!(c.rows[1].is_some());
         assert!(!c.can_save());
+    }
+
+    #[test]
+    fn each_tone_label_shows_a_wave_in_that_tone() {
+        assert_eq!(tone_label(SkinTone::None), "👋 None");
+        assert_eq!(tone_label(SkinTone::Medium), "👋🏽 Medium");
+        assert_eq!(SkinTone::ALL.map(tone_label).len(), 6);
     }
 }

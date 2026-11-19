@@ -7,7 +7,9 @@
 mod address;
 mod config_watch;
 mod engine;
+mod fingerprint;
 mod ibus_types;
+mod usage_watch;
 
 use std::process::ExitCode;
 

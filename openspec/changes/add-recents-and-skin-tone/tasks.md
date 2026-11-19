@@ -26,14 +26,14 @@
 
 ## 6. The engine
 
-- [ ] 6.1 Move the fingerprint into its own module and add `UsageWatch`: check at start, on FocusIn and FocusInId and when a search opens, an empty usage for a missing or bad file, a log once under `TORPEDO_DEBUG`, the fingerprint of its own write, and the rename of a broken file to `usage.toml.broken` before the next write replaces it. Verify with unit tests in a temp folder for a new file, a deleted file, a broken file, the rename over an older `usage.toml.broken`, no rename of a missing file, and the engine's own write.
+- [x] 6.1 Move the fingerprint into its own module and add `UsageWatch`: check at start, on FocusIn and FocusInId and when a search opens, an empty usage for a missing or bad file, a log once under `TORPEDO_DEBUG`, the fingerprint of its own write, and the rename of a broken file to `usage.toml.broken` before the next write replaces it. Verify with unit tests in a temp folder for a new file, a deleted file, a broken file, the rename over an older `usage.toml.broken`, no rename of a missing file, and the engine's own write.
 - [ ] 6.2 Record each outcome with `used` when `remember_usage` is true, with `SystemTime::now()`, save it, and pass the usage to the picker. Pass an empty usage when `remember_usage` is false. Verify with `cargo test -p torpedo-engine` and the e2e tests of group 8.
 
 ## 7. The settings command and window
 
-- [ ] 7.1 Add `--set-skin-tone`, `--set-remember-usage` and `--clear-usage` to `torpedo-settings`, with no GTK call on that path. Verify with `cargo test -p torpedo-settings` for the argument parsing.
-- [ ] 7.2 Add the "Emoji" group to the window: the skin tone combo row with a 👋 in each tone, the switch row, and the "Clear usage" row with its `AdwAlertDialog`. Verify with `cargo clippy -p torpedo-settings --all-targets -- -D warnings`. Do not start the window in any test or on the owner's display.
-- [ ] 7.3 Add the new flags, the private state folder, and one line that says `cargo test` needs Python gi and `ibus-data` for the skin tone oracle test, to `AGENTS.md`. Verify that `AGENTS.md` names every flag that `torpedo-settings --help` prints.
+- [x] 7.1 Add `--set-skin-tone`, `--set-remember-usage` and `--clear-usage` to `torpedo-settings`, with no GTK call on that path. Verify with `cargo test -p torpedo-settings` for the argument parsing.
+- [x] 7.2 Add the "Emoji" group to the window: the skin tone combo row with a 👋 in each tone, the switch row, and the "Clear usage" row with its `AdwAlertDialog`. Verify with `cargo clippy -p torpedo-settings --all-targets -- -D warnings`. Do not start the window in any test or on the owner's display.
+- [x] 7.3 Add the new flags, the private state folder, and one line that says `cargo test` needs Python gi and `ibus-data` for the skin tone oracle test, to `AGENTS.md`. Verify that `AGENTS.md` names every flag that `torpedo-settings --help` prints.
 
 ## 8. Scenario tests
 

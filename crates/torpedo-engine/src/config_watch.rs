@@ -6,36 +6,11 @@
 //! bad file keeps the last good config and is logged once.
 
 use std::fs;
-use std::io::ErrorKind;
-use std::os::unix::fs::MetadataExt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+
+use crate::fingerprint::{Fingerprint, fingerprint};
 
 use torpedo_core::config::{self, Config};
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum Fingerprint {
-    Missing,
-    Unreadable(String),
-    File {
-        mtime_ns: i128,
-        size: u64,
-        dev: u64,
-        ino: u64,
-    },
-}
-
-fn fingerprint(path: &Path) -> Fingerprint {
-    match fs::metadata(path) {
-        Ok(m) => Fingerprint::File {
-            mtime_ns: m.mtime() as i128 * 1_000_000_000 + m.mtime_nsec() as i128,
-            size: m.len(),
-            dev: m.dev(),
-            ino: m.ino(),
-        },
-        Err(e) if e.kind() == ErrorKind::NotFound => Fingerprint::Missing,
-        Err(e) => Fingerprint::Unreadable(e.to_string()),
-    }
-}
 
 /// The config file and the last good config read from it.
 pub struct ConfigWatch {
@@ -113,6 +88,7 @@ impl ConfigWatch {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
     use std::sync::Mutex;
 
     static LOG: Mutex<Vec<String>> = Mutex::new(Vec::new());
