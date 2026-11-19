@@ -216,3 +216,9 @@ The daemon-connection tests start the engine by hand through the driver, with an
 1. The owner runs `./install.sh`. It asks for the sudo password once.
 2. The owner runs `ibus restart` and adds Torpedo in GNOME Settings, keeping Danish as a fallback.
 3. To roll back, the owner switches to Danish, removes Torpedo from the input sources, runs `./uninstall.sh` and `ibus restart`.
+
+## Changed during apply
+
+### 2026-11-19: The emoji end check has two more ranges
+
+The decision "The boundary uses surrounding text first, then the last character" lists the ranges of the emoji end check. Its unit test runs the check over the last character of every gemoji emoji, and it failed on ◾ (U+25FE). The check now also holds U+25A0 to U+25FF (geometric shapes, such as ▪ ◾ ▶) and U+2900 to U+297F (arrows, such as ⤴ ⤵). Both blocks hold emoji in gemoji. The approach is the same: a set of ranges, checked against the data.
