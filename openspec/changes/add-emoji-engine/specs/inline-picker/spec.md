@@ -63,18 +63,97 @@ A press or release of a modifier key alone SHALL NOT change the held text.
 - **WHEN** the user types `:`, presses and releases Shift, and types `:` again
 - **THEN** a search opens
 
-### Requirement: Dead keys pass through
-A dead key, such as the acute accent on the Danish layout, SHALL pass through.
+### Requirement: A dead key is held
+A dead key SHALL be held, and the preedit SHALL show the spacing form of its accent. A dead key with no accent that torpedo knows SHALL pass through.
 
-#### Scenario: A dead key with nothing held
+#### Scenario: The dead acute key
 - **GIVEN** no text is held
 - **WHEN** the user presses the dead acute key
+- **THEN** the preedit shows `´`
+- **AND** the key does not reach the app
+
+#### Scenario: The accent is underlined
+- **GIVEN** no text is held
+- **WHEN** the user presses the dead diaeresis key
+- **THEN** the preedit shows `¨` underlined
+
+#### Scenario: An unknown dead key
+- **GIVEN** no text is held
+- **WHEN** the user presses the dead belowdot key
 - **THEN** the key reaches the app
+
+### Requirement: A dead key composes with the next character
+When a dead key is held and the next character has a precomposed form with that accent, the engine SHALL commit the precomposed form.
+
+#### Scenario: Acute and e
+- **WHEN** the user presses the dead acute key and then `e`
+- **THEN** the app receives `é`
+
+#### Scenario: Diaeresis and u
+- **WHEN** the user presses the dead diaeresis key and then `u`
+- **THEN** the app receives `ü`
+
+#### Scenario: Tilde and n
+- **WHEN** the user presses the dead tilde key and then `n`
+- **THEN** the app receives `ñ`
+
+#### Scenario: Acute and upper case E
+- **WHEN** the user presses the dead acute key and then Shift+`e`
+- **THEN** the app receives `É`
+
+### Requirement: A dead key alone gives its accent
+When a dead key is held, a space or the same dead key again SHALL commit the spacing form of the accent.
+
+#### Scenario: Dead key and space
+- **WHEN** the user presses the dead acute key and then space
+- **THEN** the app receives `´`
+
+#### Scenario: The same dead key twice
+- **WHEN** the user presses the dead circumflex key twice
+- **THEN** the app receives `^`
+
+### Requirement: A dead key that does not compose
+When a dead key is held and the next character has no precomposed form with that accent, the engine SHALL commit the spacing accent and then handle the character as usual.
+
+#### Scenario: Acute and q
+- **WHEN** the user presses the dead acute key and then `q`
+- **THEN** the app receives `´q`
+
+### Requirement: A dead key before another key
+When a dead key is held, a key without a character, other than Backspace and a modifier key alone, SHALL commit the spacing accent and then be handled as usual. Another dead key SHALL commit the first accent and be held itself. Backspace SHALL remove the held dead key.
+
+#### Scenario: Dead key and Left
+- **WHEN** the user presses the dead acute key and then Left
+- **THEN** the app receives `´` and then Left
+
+#### Scenario: Two different dead keys
+- **WHEN** the user presses the dead acute key and then the dead diaeresis key
+- **THEN** the app receives `´`
+- **AND** the preedit shows `¨`
+
+#### Scenario: Backspace after a dead key
+- **WHEN** the user presses the dead acute key and then Backspace
+- **THEN** the preedit is empty
+- **AND** the app receives nothing
+
+#### Scenario: Shift after a dead key
+- **WHEN** the user presses the dead acute key, presses Shift, and types `e`
+- **THEN** the app receives `É`
+
+### Requirement: A dead key ends a trigger prefix or a search
+A dead key while a trigger prefix or a search is held SHALL commit the held text as plain text, and the dead key SHALL then be held.
 
 #### Scenario: A dead key while the first colon is held
 - **GIVEN** the user typed `:` at a boundary
 - **WHEN** the user presses the dead acute key
-- **THEN** the app receives `:` and then the dead acute key
+- **THEN** the app receives `:`
+- **AND** the preedit shows `´`
+
+#### Scenario: A dead key during a search
+- **GIVEN** a search is open with the query `fi`
+- **WHEN** the user presses the dead acute key
+- **THEN** the app receives `::fi`
+- **AND** the search is closed and the preedit shows `´`
 
 ### Requirement: Held text reaches the app before a key that passes through
 When a key passes through while text is held, the engine SHALL commit the held text first. The app SHALL receive the held text before the key.
@@ -92,7 +171,7 @@ When a key passes through while text is held, the engine SHALL commit the held t
 - **AND** the search is closed
 
 ### Requirement: The trigger counts only at a boundary
-The trigger SHALL open a search only at a boundary: at the start of the text or after whitespace. The engine SHALL use the surrounding text when the app sent it.
+The trigger SHALL open a search only at a boundary: at the start of the text, or after whitespace, an emoji, an opening bracket or an opening quote. The opening brackets and quotes are `( [ { " ' « „ “`. The engine SHALL use the surrounding text when the app sent it.
 
 #### Scenario: A trigger after a word
 - **GIVEN** the surrounding text before the cursor is `std`
@@ -110,6 +189,21 @@ The trigger SHALL open a search only at a boundary: at the start of the text or 
 - **WHEN** the user types `::`
 - **THEN** a search opens
 
+#### Scenario: A trigger after an emoji
+- **GIVEN** the surrounding text before the cursor is `ok 🔥`
+- **WHEN** the user types `::`
+- **THEN** a search opens
+
+#### Scenario: A trigger after an opening bracket
+- **GIVEN** the surrounding text before the cursor is `(`
+- **WHEN** the user types `::smile:`
+- **THEN** the app receives `😄`
+
+#### Scenario: A trigger after an opening quote
+- **GIVEN** the surrounding text before the cursor is `„`
+- **WHEN** the user types `::`
+- **THEN** a search opens
+
 ### Requirement: The engine asks every app for surrounding text
 The engine SHALL ask each input context for surrounding text when it gains focus, not only the first one.
 
@@ -119,7 +213,7 @@ The engine SHALL ask each input context for surrounding text when it gains focus
 - **THEN** the second input context is asked for surrounding text
 
 ### Requirement: Without surrounding text the last typed character decides
-When the app sent no surrounding text, the engine SHALL use the last character it saw since focus-in. When it knows no character, the engine SHALL count the cursor as a boundary.
+When the app sent no surrounding text, the engine SHALL use the last character it passed through or committed since focus-in. When it knows no character, the engine SHALL count the cursor as a boundary.
 
 #### Scenario: A trigger after a typed letter
 - **GIVEN** the app sends no surrounding text
@@ -136,6 +230,11 @@ When the app sent no surrounding text, the engine SHALL use the last character i
 - **GIVEN** the app sends no surrounding text and the user typed nothing since focus-in
 - **WHEN** the user types `::`
 - **THEN** a search opens
+
+#### Scenario: Two emoji in a row
+- **GIVEN** the app sends no surrounding text
+- **WHEN** the user types `::fire:::rocket:`
+- **THEN** the app receives `🔥🚀`
 
 ### Requirement: The trigger is two colons
 The trigger SHALL be `::`.
@@ -380,6 +479,11 @@ When the input context loses focus, is reset, or the engine is switched off, the
 - **GIVEN** a search is open with the query `fi`
 - **WHEN** the user switches to another input source
 - **THEN** the app receives `::fi` once
+
+#### Scenario: Focus moves away with a held dead key
+- **GIVEN** the user pressed the dead acute key
+- **WHEN** the input context loses focus
+- **THEN** the app receives `´` once
 
 #### Scenario: Typing after a reset
 - **GIVEN** a search was open with the query `fi` and the app reset the input context

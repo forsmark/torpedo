@@ -12,7 +12,7 @@ reads these lines to find the specs a change could contradict.
 A name the user adds to an emoji in the settings window, in addition to its shortcodes.
 
 **Boundary**:
-A place where the trigger counts: the start of the text, or right after whitespace.
+A place where the trigger counts: the start of the text, or right after whitespace, an emoji, an opening bracket or an opening quote.
 
 **Candidate list**:
 The list of matching emoji that GNOME Shell shows at the text cursor while a search is open.
@@ -20,11 +20,14 @@ The list of matching emoji that GNOME Shell shows at the text cursor while a sea
 **Component file**:
 The XML file in `/usr/share/ibus/component/` that tells IBus how to start the engine and names the engine `torpedo`.
 
+**Dead key**:
+A key that types no character by itself but puts an accent on the next one, such as the acute key on the Danish layout. The engine composes it with the next character.
+
 **Engine**:
 The torpedo program that IBus starts and sends each key to. It decides whether a key passes through to the app.
 
 **Held text**:
-Text the user typed that the engine shows in the preedit and has not committed yet: a trigger prefix, or the trigger and the query.
+Text the user typed that the engine shows in the preedit and has not committed yet: a trigger prefix, the trigger and the query, or the accent of a dead key.
 
 **Plain text**:
 The held text committed exactly as typed, with no emoji in place of it.

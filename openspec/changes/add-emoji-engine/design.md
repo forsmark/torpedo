@@ -34,13 +34,14 @@ See proposal.md for the motivation.
 
 `Picker::new(trigger: &str, emoji: &EmojiIndex)` takes the trigger as a parameter. The engine passes `"::"`. The config change later passes the configured value and changes nothing else.
 
-The states are Idle, Prefix (a proper prefix of the trigger is held) and Search (the trigger and a query are held, with the ranked matches and the selected index). Every key falls into one class:
+The states are Idle, Prefix (a proper prefix of the trigger is held), Search (the trigger and a query are held, with the ranked matches and the selected index) and Dead (a dead key is held). Every key falls into one class:
 
 | Key class | Idle | Prefix | Search |
 |---|---|---|---|
 | Release, or a modifier key alone | pass | pass, keep held | pass, keep held |
 | Ctrl, Alt or Super held | pass | commit held, pass | commit plain, close, pass |
-| Dead key | pass | commit held, pass | commit plain, close, pass |
+| Known dead key | hold it (Dead) | commit held, hold it (Dead) | commit plain, close, hold it (Dead) |
+| Unknown dead key | pass | commit held, pass | commit plain, close, pass |
 | Next trigger character | start Prefix or Search if at a boundary, else pass | extend, and open Search at the full trigger | (see `:` and others) |
 | Query character | pass | commit held + char, consume | append, or with no match commit plain and close |
 | `:` | trigger rules | trigger rules | exact shortcode: commit emoji. Otherwise commit plain + `:` |
@@ -50,6 +51,18 @@ The states are Idle, Prefix (a proper prefix of the trigger is held) and Search 
 | Enter, Tab | pass | commit held, pass | with list: commit selected, consume. No list: commit plain, close, pass |
 | Esc | pass | commit held, pass | commit plain, close, consume |
 | Any other key without a character | pass | commit held, pass | commit plain, close, pass |
+
+In Dead, the held text is the spacing accent:
+
+| Key class | Dead |
+|---|---|
+| Release, or a modifier key alone | pass, keep held |
+| A character with a precomposed form with the accent | commit the precomposed form, consume |
+| Space, or the same dead key | commit the spacing accent, consume |
+| Any other character | commit accent + char, consume |
+| Another known dead key | commit the accent, hold the new one |
+| Backspace | drop held, consume |
+| Ctrl, Alt or Super held, or any other key without a character | commit the accent, pass |
 
 "Commit held + char" and "commit plain + char" re-run the character through the Idle rules with the committed text as the last character. In practice that always gives one commit of the held text and the character together.
 
@@ -66,6 +79,33 @@ Focus-in, focus-out, reset and disable put the picker in Idle and forget what it
 
 The pass-through modifier mask is Control (1<<2), Mod1 (1<<3), Mod4 (1<<6), Super (1<<26), Hyper (1<<27) and Meta (1<<28). Shift, Lock (Caps Lock), Mod2 (Num Lock) and Mod5 (AltGr) are not in it. Release is 1<<30.
 
+### Dead keys compose in the engine
+
+The `xkb:dk::dan` engine that the owner uses today is an `IBusEngineSimple`, which composes dead keys itself. A dead key that torpedo passed on would reach each app raw, and whether every app composes it is not verified. A failure would break normal Danish typing, such as `idé` and `café`. So torpedo composes the dead keys itself.
+
+- A table maps each known dead keysym to a combining mark and a spacing form:
+
+| Keysym | Name | Combining | Spacing |
+|---|---|---|---|
+| 0xfe50 | dead_grave | U+0300 | `` ` `` |
+| 0xfe51 | dead_acute | U+0301 | `´` |
+| 0xfe52 | dead_circumflex | U+0302 | `^` |
+| 0xfe53 | dead_tilde | U+0303 | `~` |
+| 0xfe54 | dead_macron | U+0304 | `¯` |
+| 0xfe55 | dead_breve | U+0306 | `˘` |
+| 0xfe56 | dead_abovedot | U+0307 | `˙` |
+| 0xfe57 | dead_diaeresis | U+0308 | `¨` |
+| 0xfe58 | dead_abovering | U+030A | `˚` |
+| 0xfe59 | dead_doubleacute | U+030B | `˝` |
+| 0xfe5a | dead_caron | U+030C | `ˇ` |
+| 0xfe5b | dead_cedilla | U+0327 | `¸` |
+| 0xfe5c | dead_ogonek | U+0328 | `˛` |
+
+- A character composes when the NFC form of the character plus the combining mark is one character. The `unicode-normalization` crate gives the NFC form.
+- The preedit shows the spacing form, underlined and with mode COMMIT, like any held text.
+- A dead key outside the table passes through, as before.
+- Sequences of two dead keys, such as acute and diaeresis for `ǘ`, do not compose. The first accent is committed and the second is held.
+
 ### The boundary uses surrounding text first, then the last character
 
 The picker keeps two facts: the surrounding text from the app, and the last character it saw.
@@ -73,7 +113,9 @@ The picker keeps two facts: the surrounding text from the app, and the last char
 - `SetSurroundingText(text, cursor, anchor)` stores the character before `min(cursor, anchor)`, or "start of text" when that index is 0.
 - A key the picker passes through, or text it commits, sets the last character and marks the stored surrounding text stale. The app sends fresh surrounding text after it applies the key, and that clears the stale mark.
 - At a trigger character: fresh surrounding text decides. Otherwise the last character decides. A key with no character, such as Left or Ctrl+v, makes the last character unknown. Unknown counts as a boundary.
-- Whitespace is `char::is_whitespace`.
+- A character is a boundary when it is whitespace (`char::is_whitespace`), an opening bracket or quote from `( [ { " ' « „ “`, or the end of an emoji.
+- The end of an emoji is a pragmatic check on the last character: a code point in U+1F000 to U+1FAFF (which holds the regional indicators and the skin tone modifiers), U+2300 to U+23FF, U+2600 to U+27BF, U+2B00 to U+2BFF, U+2190 to U+21FF, `©`, `®`, `‼`, `⁉`, `™`, `ℹ`, U+3030, U+303D, U+3297 and U+3299, the variation selector U+FE0F, the keycap mark U+20E3, or the tag end U+E007F. A unit test checks that the last character of every emoji in the gemoji data passes.
+- Torpedo's own commits set the last character. So after `::fire:` commits 🔥, the next `::` opens a search when no fresh surrounding text exists.
 
 Alternative considered: trust surrounding text always. It can lag one key behind the key events, so `a::` typed fast could open a search.
 
@@ -163,18 +205,14 @@ The daemon-connection tests start the engine by hand through the driver, with an
 ## Risks / Trade-offs
 
 - [The order between a commit and a passed key in GNOME Shell is not measured] → Character keys never depend on it. For keys without a character the harness measures the daemon side, and the owner checks the Shell side after install.
-- [A passed dead key composes only if the app or compositor composes it] → The `xkb:dk::dan` engine is an `IBusEngineSimple`, which composes dead keys in the engine. Under torpedo the compose step moves to the app. Whether each app does it is not verified. The owner checks `´` + `e` in GTK, Firefox and kitty after install. If it fails, a later change adds compose to torpedo.
+- [Torpedo's compose covers single dead keys only] → The table holds the accents that the `dk` layout gives. Two dead keys in a row do not compose. This matches what Danish typing needs.
 - [Surrounding text can lag] → A key the engine passes marks it stale until the app sends fresh text.
 - [Kitty may send no surrounding text] → The last character since focus-in decides. After a cursor move by mouse the engine knows nothing and counts a boundary.
 - [The layout `dk` is fixed in the component file] → It matches the owner's desktop. A later change can make it an install option.
-- [A trigger right after an emoji does not count, because an emoji is not whitespace] → This follows the brief. See Open Questions.
+- [The emoji check is a set of ranges, not the full Extended_Pictographic property] → A unit test runs it over the last character of every gemoji emoji. A rare symbol in those ranges also counts as a boundary, which does no harm.
 
 ## Migration Plan
 
 1. The owner runs `./install.sh`. It asks for the sudo password once.
 2. The owner runs `ibus restart` and adds Torpedo in GNOME Settings, keeping Danish as a fallback.
 3. To roll back, the owner switches to Danish, removes Torpedo from the input sources, runs `./uninstall.sh` and `ibus restart`.
-
-## Open Questions
-
-- Should the trigger also count right after an emoji, so that `::fire:::rocket:` gives 🔥🚀? Today it does not. The answer changes one rule in the boundary check and one scenario.
