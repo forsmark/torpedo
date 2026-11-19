@@ -8,10 +8,10 @@
  */
 
 /**
- * A path inside a workspace package. The match is the package's folder, such as
- * `packages/core`. Write another pattern when packages sit elsewhere.
+ * A path inside a crate of the Cargo workspace. The match is the crate's
+ * folder, such as `crates/torpedo-core`.
  */
-export const PACKAGE = /^(apps|packages)\/[^/]+(?=\/)/;
+export const PACKAGE = /^crates\/[^/]+(?=\/)/;
 
 /**
  * The folder of scripts that is no workspace package. Its tests run with
@@ -27,8 +27,9 @@ export const SCRIPTS_DIR = 'scripts';
  */
 export const NO_TESTS = [
   'docs/',
-  // e2e tests choose their own tests. See references/playwright.md in the skill.
-  'e2e/',
+  // The coverage map holds no test. The e2e tests themselves drive the engine
+  // binary, so a change to them counts as a root file and runs everything.
+  'e2e/coverage/',
   '.claude/',
   // Markdown files at the root, such as README.md.
   /^[^/]+\.md$/,
@@ -45,8 +46,8 @@ export const SCRIPT_TESTS = 'scripts';
  * runs it. `tests` holds package names, or SCRIPT_TESTS.
  */
 export const EXTRA_TESTS = [
-  // `og-image.test.ts` in @acme/api draws with the fonts of the web app.
-  // { path: /^apps\/web\/public\/fonts\//, tests: ['@acme/api'] },
+  // A test in torpedo-engine that reads a data file of torpedo-core.
+  // { path: /^crates\/torpedo-core\/data\//, tests: ['torpedo-engine'] },
 ];
 
 /**

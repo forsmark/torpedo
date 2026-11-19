@@ -186,7 +186,7 @@ describe('snapshot', () => {
  * arguments, runs FAKE_HOOK, stops verify when FAKE_KILL is set, and exits
  * FAKE_STATUS. Add any other command that the project's checks start.
  */
-const STAND_INS = ['pnpm', 'npm', 'npx', 'yarn', 'bun', 'turbo'];
+const STAND_INS = ['cargo', 'pnpm', 'npm', 'npx', 'yarn', 'bun', 'turbo'];
 
 describe('verify.mjs', () => {
   let dir;
@@ -229,13 +229,15 @@ describe('verify.mjs', () => {
     for (const file of [
       join(scripts, 'verify.mjs'),
       join(scripts, 'heavy-lock.mjs'),
+      join(scripts, 'cargo-path.mjs'),
+      join(scripts, 'e2e.mjs'),
       join(HERE, 'affected.mjs'),
       join(HERE, 'record.mjs'),
     ]) {
       cpSync(file, join(work, relative(ROOT, file)));
     }
-    mkdirSync(join(work, 'packages/core/src'), { recursive: true });
-    writeFileSync(join(work, 'packages/core/src/index.js'), 'export const one = 1;\n');
+    mkdirSync(join(work, 'crates/core/src'), { recursive: true });
+    writeFileSync(join(work, 'crates/core/src/lib.rs'), 'pub const ONE: u8 = 1;\n');
     if (SCRIPTS_DIR !== null) {
       writeFileSync(
         join(work, SCRIPTS_DIR, 'ok.test.mjs'),
@@ -296,16 +298,17 @@ describe('verify.mjs', () => {
     );
   });
 
-  it('tests the changed package and its dependents, from the merge base', () => {
+  it('tests the whole workspace and the e2e tests for a changed crate', () => {
     git('checkout', '-q', '-b', 'change');
     try {
-      writeFileSync(join(work, 'packages/core/src/index.js'), 'export const one = 2;\n');
+      writeFileSync(join(work, 'crates/core/src/lib.rs'), 'pub const ONE: u8 = 2;\n');
       git('commit', '-q', '-am', 'Change core');
-      const mergeBase = git('merge-base', 'base', 'HEAD');
       const { status, out } = verify(['--affected', '--base', 'base']);
       assert.equal(status, 0, out);
-      assert.match(out, /affected since base: packages\/core and their dependents\./);
-      assert.ok(out.includes(`--filter=...[${mergeBase}]`), out);
+      assert.match(out, /affected since base: crates\/core and their dependents\./);
+      // Cargo has no filter for "changed since a commit", so the whole workspace runs.
+      assert.ok(out.includes('ran cargo test --workspace'), out);
+      assert.match(out, /e2e: no test files yet/);
     } finally {
       git('checkout', '-q', 'main');
     }

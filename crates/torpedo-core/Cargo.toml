@@ -1,0 +1,6 @@
+[package]
+name = "torpedo-core"
+description = "The pure logic of torpedo: trigger detection, search and config. No D-Bus and no GTK."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true

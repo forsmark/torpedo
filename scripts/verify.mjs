@@ -15,9 +15,16 @@
  * skip its own run. See verify/record.mjs.
  */
 import { spawnSync } from 'node:child_process';
+import { withCargoOnPath } from './cargo-path.mjs';
 import { holdHeavyLock } from './heavy-lock.mjs';
 import { PACKAGE, SCRIPTS_DIR, scopeOf } from './verify/affected.mjs';
 import { recordOf, snapshot, writeRecord } from './verify/record.mjs';
+
+/** The whole Rust workspace, then the scenario tests under e2e/. */
+const TESTS = [
+  ['cargo', 'test', '--workspace'],
+  ['node', 'scripts/e2e.mjs'],
+];
 
 const CONFIG = {
   /** The ref that work merges into. `--base` overrides it. */
@@ -27,30 +34,37 @@ const CONFIG = {
    * The first that fails stops the run.
    */
   checks: [
-    // PROJECT: add the lint step, for example ['pnpm', 'turbo', 'run', 'lint'].
-    // PROJECT: add the typecheck step, for example ['pnpm', 'turbo', 'run', 'typecheck'].
+    ['cargo', 'fmt', '--all', '--check'],
+    ['cargo', 'clippy', '--workspace', '--all-targets', '--', '-D', 'warnings'],
+    ['cargo', 'check', '--workspace', '--all-targets'],
   ],
-  /** Every test of every workspace package. */
-  testAll: ['pnpm', 'turbo', 'run', 'test'],
+  /** Every test, as commands that run in order. The first that fails stops the run. */
+  testAll: TESTS,
   /**
-   * The tests of the packages that the filters select. A filter is
-   * `...[<commit>]` for the packages changed since that commit and their
-   * dependents, or a package name. turbo and `pnpm --filter` read the same syntax.
+   * The tests of the packages that the filters select, as commands that run in
+   * order. A filter is `...[<commit>]` for the crates changed since that commit
+   * and their dependents, or a crate name. Cargo has no filter for "changed
+   * since a commit", so an affected run tests the whole workspace. The
+   * workspace is small, and incremental builds keep that cheap.
    */
-  testFiltered: (filters) => [
-    'pnpm',
-    'turbo',
-    'run',
-    'test',
-    ...filters.map((filter) => `--filter=${filter}`),
-  ],
+  testFiltered: (_filters) => TESTS,
   /** The tests of SCRIPTS_DIR. The workspace's test runner never sees them. */
   testScripts: ['node', '--test', `${SCRIPTS_DIR}/**/*.test.mjs`],
 };
 
 holdHeavyLock();
 
-const run = ([cmd, ...args]) => spawnSync(cmd, args, { stdio: 'inherit' }).status ?? 1;
+// cargo lives in ~/.cargo/bin, which a fresh shell may lack on its PATH.
+const env = withCargoOnPath();
+const run = ([cmd, ...args]) => spawnSync(cmd, args, { stdio: 'inherit', env }).status ?? 1;
+/** Run the commands in order, and stop at the first that fails. */
+const runEach = (commands) => {
+  for (const command of commands) {
+    const status = run(command);
+    if (status !== 0) return status;
+  }
+  return 0;
+};
 
 const args = process.argv.slice(2);
 const affected = args.includes('--affected');
@@ -108,14 +122,14 @@ for (const check of CONFIG.checks) {
 }
 
 if (status === 0 && scope.packages !== 'none') {
-  status = run(
+  status = runEach(
     scope.packages === 'all'
       ? CONFIG.testAll
       : // The merge base, not `base`: a base that moved on would add the files it changed.
         CONFIG.testFiltered([`...[${mergeBase}]`, ...scope.extra]),
   );
 } else if (status === 0 && scope.extra.length > 0) {
-  status = run(CONFIG.testFiltered(scope.extra));
+  status = runEach(CONFIG.testFiltered(scope.extra));
 }
 
 if (status === 0 && scope.scripts) status = run(CONFIG.testScripts);
