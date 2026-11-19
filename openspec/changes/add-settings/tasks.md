@@ -44,7 +44,7 @@
 
 ## 9. Integration
 
-- [ ] 9.1 On a clean tree, run `node scripts/verify.mjs --affected`, `node --test "scripts/**/*.test.mjs"` and `node tools/spec-checks/bin/spec-checks verify`. Verify that they pass (coverage may fail before the sync only on scenarios that exist only in the delta specs), that `pgrep -af ibus-daemon` shows only PID 7674, that `~/.config/ibus/bus/` is unchanged, and that `~/.config/torpedo` does not exist or is unchanged.
+- [x] 9.1 On a clean tree, run `node scripts/verify.mjs --affected`, `node --test "scripts/**/*.test.mjs"` and `node tools/spec-checks/bin/spec-checks verify`. Verify that they pass (coverage may fail before the sync only on scenarios that exist only in the delta specs), that `pgrep -af ibus-daemon` shows only PID 7674, that `~/.config/ibus/bus/` is unchanged, and that `~/.config/torpedo` does not exist or is unchanged. Note: `verify --affected` passed (133 core, 28 engine and 7 settings Rust tests, 175 e2e tests, 56 script tests). Before the sync, `spec-checks verify` fails only its coverage check: 75 map entries name scenarios that exist only in the delta specs, and the old key of *The trigger is two colons*. On a synced copy of the branch all six checks pass, with 169 of 169 scenarios mapped. `pgrep -af ibus-daemon` showed only PID 7674, `~/.config/ibus/bus/` was unchanged, and `~/.config/torpedo` does not exist.
 
 ## Workflow follow-up
 
