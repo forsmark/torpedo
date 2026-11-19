@@ -16,9 +16,9 @@
 
 ## 3. Verify scripts
 
-- [ ] 3.1 Add `scripts/e2e.mjs`. It takes the heavy lock, adds the cargo bin folder to the PATH, finds `e2e/**/*.test.mjs`, prints "e2e: no test files yet" and exits 0 when there are none, and otherwise runs `node --test` on them. Add `scripts/e2e.test.mjs` for the finding of files, with and without test files. Verify that `node scripts/e2e.mjs` passes on the empty `e2e/` and that the new test passes.
-- [ ] 3.2 Fill CONFIG in `scripts/verify.mjs`: the fmt and clippy lint steps, the `cargo check` typecheck step, and the tests `cargo test --workspace` then `node scripts/e2e.mjs`. Let `testAll` and `testFiltered` be lists of commands that run in order. Add the cargo bin folder to the PATH of the commands it starts. Verify that `node scripts/verify.mjs` passes in a shell without `~/.cargo/bin` on its PATH.
-- [ ] 3.3 Fill the layout in `scripts/verify/affected.mjs`: `PACKAGE` matches `crates/<name>/`, and `NO_TESTS` holds `e2e/coverage/` in place of `e2e/`. Move the samples in `affected.test.mjs` to `crates/`, and change its e2e test so that an e2e test file runs everything and the coverage map runs nothing. Verify that `node --test "scripts/**/*.test.mjs"` passes.
+- [x] 3.1 Add `scripts/e2e.mjs`. It takes the heavy lock, adds the cargo bin folder to the PATH, finds `e2e/**/*.test.mjs`, prints "e2e: no test files yet" and exits 0 when there are none, and otherwise runs `node --test` on them. Add `scripts/e2e.test.mjs` for the finding of files, with and without test files. Verify that `node scripts/e2e.mjs` passes on the empty `e2e/` and that the new test passes.
+- [x] 3.2 Fill CONFIG in `scripts/verify.mjs`: the fmt and clippy lint steps, the `cargo check` typecheck step, and the tests `cargo test --workspace` then `node scripts/e2e.mjs`. Let `testAll` and `testFiltered` be lists of commands that run in order. Add the cargo bin folder to the PATH of the commands it starts. Verify that `node scripts/verify.mjs` passes in a shell without `~/.cargo/bin` on its PATH.
+- [x] 3.3 Fill the layout in `scripts/verify/affected.mjs`: `PACKAGE` matches `crates/<name>/`, and `NO_TESTS` holds `e2e/coverage/` in place of `e2e/`. Move the samples in `affected.test.mjs` to `crates/`, and change its e2e test so that an e2e test file runs everything and the coverage map runs nothing. Verify that `node --test "scripts/**/*.test.mjs"` passes.
 
 ## 4. Docs
 

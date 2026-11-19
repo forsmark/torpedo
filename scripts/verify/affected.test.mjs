@@ -2,7 +2,7 @@
  * The scope rules of `verify --affected`, and the guard that holds EXTRA_TESTS
  * to what the tests of this repository read.
  *
- * The first two groups use a sample workspace, so they pass in any repository
+ * The first two groups use a sample workspace of crates, so they pass in any repository
  * with the template's layout. Change them when you change the layout in
  * affected.mjs. The guard reads this repository.
  */
@@ -23,19 +23,19 @@ import { missingEntries, readsIn } from './reads-across.mjs';
 
 const ROOT = join(import.meta.dirname, '../..');
 
-/** A sample workspace: two apps that both depend on one package. */
+/** A sample workspace: two crates that both depend on one core crate. */
 const SAMPLE = [
-  { folder: 'packages/core', name: '@acme/core', depends: [] },
-  { folder: 'apps/web', name: '@acme/web', depends: ['@acme/core'] },
-  { folder: 'apps/api', name: '@acme/api', depends: ['@acme/core'] },
+  { folder: 'crates/core', name: 'core', depends: [] },
+  { folder: 'crates/web', name: 'web', depends: ['core'] },
+  { folder: 'crates/api', name: 'api', depends: ['core'] },
 ];
 
-/** A sample map: the API's tests read the web app's fonts. */
-const SAMPLE_EXTRA = [{ path: /^apps\/web\/public\/fonts\//, tests: ['@acme/api'] }];
+/** A sample map: the API's tests read the web crate's fonts. */
+const SAMPLE_EXTRA = [{ path: /^crates\/web\/public\/fonts\//, tests: ['api'] }];
 
 describe('what an affected verify tests', () => {
   it('runs the changed packages and their dependents for a change in one', () => {
-    assert.deepEqual(scopeOf(['packages/core/src/index.ts']), {
+    assert.deepEqual(scopeOf(['crates/core/src/index.ts']), {
       packages: 'changed',
       extra: [],
       scripts: false,
@@ -43,9 +43,9 @@ describe('what an affected verify tests', () => {
   });
 
   it('runs the tests that EXTRA_TESTS names, beside the changed packages', () => {
-    assert.deepEqual(scopeOf(['apps/web/public/fonts/a.woff2'], SAMPLE_EXTRA), {
+    assert.deepEqual(scopeOf(['crates/web/public/fonts/a.woff2'], SAMPLE_EXTRA), {
       packages: 'changed',
-      extra: ['@acme/api'],
+      extra: ['api'],
       scripts: false,
     });
   });
@@ -56,13 +56,13 @@ describe('what an affected verify tests', () => {
       extra: [],
       scripts: true,
     });
-    const both = scopeOf(['packages/core/src/index.ts', 'scripts/verify.mjs']);
+    const both = scopeOf(['crates/core/src/index.ts', 'scripts/verify.mjs']);
     assert.equal(both.packages, 'changed');
     assert.equal(both.scripts, true);
   });
 
-  it('runs nothing for docs, e2e and markdown at the root', () => {
-    assert.deepEqual(scopeOf(['docs/guide.md', 'e2e/tests/home.spec.ts', 'README.md']), {
+  it('runs nothing for docs, the coverage map and markdown at the root', () => {
+    assert.deepEqual(scopeOf(['docs/guide.md', 'e2e/coverage/trigger.json', 'README.md']), {
       packages: 'none',
       extra: [],
       scripts: false,
@@ -70,13 +70,27 @@ describe('what an affected verify tests', () => {
   });
 
   it('runs everything for a root file that any package may read', () => {
-    for (const file of ['pnpm-lock.yaml', 'package.json', 'turbo.json', 'tsconfig.base.json']) {
+    for (const file of [
+      'Cargo.toml',
+      'Cargo.lock',
+      'rust-toolchain.toml',
+      'package.json',
+      'pnpm-lock.yaml',
+    ]) {
       assert.deepEqual(scopeOf([file]), { packages: 'all', extra: [], scripts: true }, file);
     }
   });
 
+  it('runs everything for an e2e test, as it drives the engine binary', () => {
+    assert.deepEqual(scopeOf(['e2e/trigger/search.test.mjs']), {
+      packages: 'all',
+      extra: [],
+      scripts: true,
+    });
+  });
+
   it('runs everything for a file beside the packages but in none of them', () => {
-    assert.equal(scopeOf(['packages/README.md']).packages, 'all');
+    assert.equal(scopeOf(['crates/README.md']).packages, 'all');
   });
 
   it('runs nothing when nothing changed', () => {
@@ -86,15 +100,15 @@ describe('what an affected verify tests', () => {
 
 describe('the guard on reads across packages', () => {
   it('fails when a test reads another package with no entry', () => {
-    const file = 'apps/web/src/test/new.test.ts';
+    const file = 'crates/web/src/test/new.test.ts';
     const text = `readFileSync(join(__dirname, '../../../api/src/schema.sql'))`;
     assert.deepEqual(missingEntries([{ file, text }], SAMPLE, SAMPLE_EXTRA), [
-      `${file} reads apps/api/src/schema.sql, and no entry in EXTRA_TESTS runs it`,
+      `${file} reads crates/api/src/schema.sql, and no entry in EXTRA_TESTS runs it`,
     ]);
   });
 
   it('fails when a test reads a doc with no entry', () => {
-    const file = 'apps/web/src/test/new.test.ts';
+    const file = 'crates/web/src/test/new.test.ts';
     const text = `readFileSync(resolve(__dirname, '../../../../docs/deploy.md'))`;
     assert.deepEqual(missingEntries([{ file, text }], SAMPLE, SAMPLE_EXTRA), [
       `${file} reads docs/deploy.md, and no entry in EXTRA_TESTS runs it`,
@@ -102,13 +116,13 @@ describe('the guard on reads across packages', () => {
   });
 
   it('passes when an entry runs the reader', () => {
-    const file = 'apps/api/src/og.test.ts';
+    const file = 'crates/api/src/og.test.ts';
     const text = `readFileSync(join(__dirname, '../../web/public/fonts/a.woff2'))`;
     assert.deepEqual(missingEntries([{ file, text }], SAMPLE, SAMPLE_EXTRA), []);
   });
 
   it('fails when a test climbs to the root and READS_THE_WHOLE_REPO lacks it', () => {
-    const file = 'packages/core/src/test/new.test.ts';
+    const file = 'crates/core/src/test/new.test.ts';
     const text = `const ROOT = join(__dirname, '..', '..', '..', '..');`;
     assert.deepEqual(missingEntries([{ file, text }], SAMPLE, SAMPLE_EXTRA), [
       `${file} climbs to the repository root, and READS_THE_WHOLE_REPO lacks it`,
@@ -117,32 +131,32 @@ describe('the guard on reads across packages', () => {
 
   it('fails when a script test reads a package', () => {
     const file = `${SCRIPTS_DIR}/new.test.mjs`;
-    const text = `readFileSync(join(ROOT, 'apps/web/index.html'))`;
+    const text = `readFileSync(join(ROOT, 'crates/web/index.html'))`;
     assert.deepEqual(missingEntries([{ file, text }], SAMPLE, SAMPLE_EXTRA), [
-      `${file} reads apps/web/index.html, and no entry in EXTRA_TESTS runs it`,
+      `${file} reads crates/web/index.html, and no entry in EXTRA_TESTS runs it`,
     ]);
   });
 
   it('asks nothing of a read of a package that the reader depends on', () => {
-    const file = 'apps/web/src/test/new.test.ts';
-    const text = `join(__dirname, '../../../../packages/core/src/fixtures')`;
+    const file = 'crates/web/src/test/new.test.ts';
+    const text = `join(__dirname, '../../../../crates/core/src/fixtures')`;
     assert.deepEqual(missingEntries([{ file, text }], SAMPLE, SAMPLE_EXTRA), []);
   });
 
   it('sees every way a read is written', () => {
-    const home = 'apps/web/src/test/new.test.ts';
+    const home = 'crates/web/src/test/new.test.ts';
     const reads = (text, file = home) => readsIn(file, text).reads;
-    assert.deepEqual(reads(`resolve('../../packages/core/src')`), ['packages/core/src']);
+    assert.deepEqual(reads(`resolve('../../crates/core/src')`), ['crates/core/src']);
     assert.deepEqual(reads('`${__dirname}/../../../../docs/a.md`'), ['docs/a.md']);
     assert.deepEqual(reads(`join(__dirname, '..', '..', '../api/src/a.ts')`), [
-      'apps/api/src/a.ts',
+      'crates/api/src/a.ts',
     ]);
-    assert.deepEqual(reads(`join(ROOT, 'apps/api/src')`), ['apps/api/src']);
-    assert.deepEqual(reads(`import a from '../../../api/src/a.svg?url'`), ['apps/api/src/a.svg']);
+    assert.deepEqual(reads(`join(ROOT, 'crates/api/src')`), ['crates/api/src']);
+    assert.deepEqual(reads(`import a from '../../../api/src/a.svg?url'`), ['crates/api/src/a.svg']);
   });
 
   it('asks nothing of a read inside the package, or of the git-ignored .env', () => {
-    const file = 'apps/web/src/test/new.test.ts';
+    const file = 'crates/web/src/test/new.test.ts';
     assert.deepEqual(readsIn(file, `join(__dirname, '../../index.html')`).reads, []);
     assert.deepEqual(readsIn(file, `join(__dirname, '../../../../.env')`).reads, []);
   });
