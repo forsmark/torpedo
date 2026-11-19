@@ -105,5 +105,30 @@
     "The new trigger after the search": {
       "unit": "e2e/config-file/engine.test.mjs › The new trigger after the search"
     }
+  },
+  "The skin_tone value": {
+    "A known skin tone": {
+      "unit": "e2e/config-file/rules.test.mjs › A known skin tone"
+    },
+    "A skin tone in upper case": {
+      "unit": "e2e/config-file/rules.test.mjs › A skin tone in upper case"
+    },
+    "A skin tone that is not a string": {
+      "unit": "e2e/config-file/rules.test.mjs › A skin tone that is not a string"
+    },
+    "No skin_tone key": {
+      "unit": "e2e/config-file/engine.test.mjs › No skin_tone key"
+    }
+  },
+  "The remember_usage value": {
+    "Usage turned off": {
+      "unit": "e2e/config-file/rules.test.mjs › Usage turned off"
+    },
+    "remember_usage as a string": {
+      "unit": "e2e/config-file/rules.test.mjs › remember_usage as a string"
+    },
+    "No remember_usage key": {
+      "unit": "e2e/config-file/engine.test.mjs › No remember_usage key"
+    }
   }
 }

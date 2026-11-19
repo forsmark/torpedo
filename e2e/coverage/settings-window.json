@@ -26,6 +26,9 @@
     },
     "Saving a bad alias": {
       "unit": "e2e/settings-window/save.test.mjs › Saving a bad alias"
+    },
+    "Saving a bad skin tone": {
+      "unit": "e2e/settings-window/save.test.mjs › Saving a bad skin tone"
     }
   },
   "Saving replaces the file in one step": {
@@ -58,6 +61,18 @@
     },
     "Another config file": {
       "unit": "e2e/settings-window/save.test.mjs › Another config file"
+    },
+    "Set the skin tone": {
+      "unit": "e2e/settings-window/usage.test.mjs › Set the skin tone"
+    },
+    "Turn usage off": {
+      "unit": "e2e/settings-window/usage.test.mjs › Turn usage off"
+    },
+    "Clear the usage": {
+      "unit": "e2e/settings-window/usage.test.mjs › Clear the usage"
+    },
+    "Clear the usage when there is none": {
+      "unit": "e2e/settings-window/usage.test.mjs › Clear the usage when there is none"
     }
   },
   "The input source menu opens the settings window": {
@@ -72,6 +87,24 @@
     },
     "Typing goes on while the settings command runs": {
       "unit": "e2e/settings-window/menu.test.mjs › Typing goes on while the settings command runs"
+    }
+  },
+  "The settings window edits the skin tone": {
+    "The skin tone selector": {
+      "none": "Only a person using the window can pick a tone in the selector. No test opens a window, so none reaches the owner's display. The pick saves through ConfigDocument::with_values and save, which Rust tests cover, and Set the skin tone shows the same save through --set-skin-tone. The labels come from tone_label, which a Rust test in torpedo-settings covers."
+    }
+  },
+  "The settings window edits remember_usage": {
+    "The usage switch": {
+      "none": "Only a person using the window can flip the switch. No test opens a window. The flip saves through ConfigDocument::with_values and save, which Rust tests cover, and Turn usage off shows the same save through --set-remember-usage."
+    }
+  },
+  "The settings window clears the usage": {
+    "Clear usage confirmed": {
+      "none": "Only a person using the window can answer the AdwAlertDialog. No test opens a window. The confirmed response deletes the usage file as --clear-usage does, which Clear the usage shows."
+    },
+    "Clear usage cancelled": {
+      "none": "Only a person using the window can cancel the AdwAlertDialog. No test opens a window. The window connects the delete to the clear response only, so a cancel runs no code that touches the usage file."
     }
   }
 }

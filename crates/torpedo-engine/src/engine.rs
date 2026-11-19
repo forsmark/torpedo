@@ -8,16 +8,19 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use torpedo_core::config::default_config_path;
 use torpedo_core::emoji::EmojiIndex;
 use torpedo_core::picker::{Action, Outcome, PAGE_SIZE, Picker};
+use torpedo_core::usage::{Usage, default_usage_path};
 use zbus::object_server::SignalEmitter;
 use zbus::zvariant::{OwnedObjectPath, Value};
 use zbus::{fdo, interface};
 
 use crate::config_watch::ConfigWatch;
 use crate::ibus_types::{self, ORIENTATION_VERTICAL, PREEDIT_CLEAR, PREEDIT_COMMIT};
+use crate::usage_watch::UsageWatch;
 
 /// The engine name in the component file.
 pub const ENGINE_NAME: &str = "torpedo";
@@ -101,24 +104,66 @@ fn ibus_text_string(value: &Value<'_>) -> Option<String> {
 pub struct Engine {
     picker: Picker,
     watch: ConfigWatch,
+    usage: UsageWatch,
+}
+
+/// The time now, in Unix seconds.
+fn unix_now() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 impl Engine {
     pub fn new() -> Engine {
         let mut watch = ConfigWatch::new(default_config_path(), log);
         watch.check();
-        Engine {
+        let mut usage = UsageWatch::new(default_usage_path(), log);
+        usage.check();
+        let mut engine = Engine {
             picker: Picker::new(watch.config().clone(), EmojiIndex::gemoji()),
             watch,
+            usage,
+        };
+        engine.hand_usage();
+        engine
+    }
+
+    /// Give the picker the usage, or none when `remember_usage` is off.
+    fn hand_usage(&mut self) -> Outcome {
+        if self.watch.config().remember_usage {
+            self.picker.set_usage(self.usage.usage())
+        } else {
+            self.picker.set_usage(&Usage::new())
         }
     }
 
-    /// Read the config file again when it changed, and hand a new config to
-    /// the picker.
+    /// Read the config file and the usage file again when they changed, and
+    /// hand what changed to the picker. A new config can turn usage on or
+    /// off, so the usage goes to the picker again then too.
     fn reload(&mut self) -> Outcome {
-        match self.watch.check() {
+        let config = self.watch.check();
+        let usage_changed = self.usage.check();
+        let config_changed = config.is_some();
+        let mut outcome = match config {
             Some(config) => self.picker.set_config(config),
             None => Outcome::default(),
+        };
+        if config_changed || usage_changed {
+            outcome.actions.extend(self.hand_usage().actions);
+        }
+        outcome
+    }
+
+    /// Record the commit of an outcome in the usage file, when usage is on.
+    fn record(&mut self, outcome: &Outcome) -> Outcome {
+        match &outcome.used {
+            Some(text) if self.watch.config().remember_usage => {
+                self.usage.record(text, unix_now());
+                self.hand_usage()
+            }
+            _ => Outcome::default(),
         }
     }
 
@@ -192,6 +237,8 @@ impl Engine {
         #[zbus(signal_emitter)] em: SignalEmitter<'_>,
     ) -> fdo::Result<bool> {
         let mut outcome = self.picker.key(keyval, state);
+        let recorded = self.record(&outcome);
+        outcome.actions.extend(recorded.actions);
         if self.picker.search_opened() {
             outcome.actions.extend(self.reload().actions);
         }
@@ -265,7 +312,10 @@ impl Engine {
         #[zbus(signal_emitter)] em: SignalEmitter<'_>,
     ) -> fdo::Result<()> {
         debug(format!("candidate clicked {index}"));
-        Self::apply(&em, self.picker.candidate_clicked(index)).await
+        let mut outcome = self.picker.candidate_clicked(index);
+        let recorded = self.record(&outcome);
+        outcome.actions.extend(recorded.actions);
+        Self::apply(&em, outcome).await
     }
 
     async fn page_up(&mut self, #[zbus(signal_emitter)] em: SignalEmitter<'_>) -> fdo::Result<()> {

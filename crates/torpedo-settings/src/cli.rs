@@ -1,7 +1,8 @@
 //! The mode without a window: checks and scripted edits of the config file.
 //!
 //! `torpedo-settings` parses its arguments before it touches GTK. With any of
-//! `--check`, `--set-trigger`, `--set-alias` or `--remove-alias` it runs here
+//! `--check`, `--set-trigger`, `--set-alias`, `--remove-alias`,
+//! `--set-skin-tone`, `--set-remember-usage` or `--clear-usage` it runs here
 //! and exits, so it needs no display.
 
 use std::fmt::Write as _;
@@ -10,6 +11,7 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 use torpedo_core::config::{self, ConfigDocument, Problem};
+use torpedo_core::usage;
 
 pub const USAGE: &str = "\
 Usage: torpedo-settings [--config <file>] [<action>...]
@@ -21,6 +23,12 @@ Actions, which open no window:
   --set-trigger <trigger>    set the trigger
   --set-alias <name>=<text>  add an alias, or change its text
   --remove-alias <name>      delete an alias
+  --set-skin-tone <tone>     set the skin tone: none, light, medium-light,
+                             medium, medium-dark or dark
+  --set-remember-usage true|false
+                             turn usage on or off
+  --clear-usage              delete the usage file,
+                             $XDG_STATE_HOME/torpedo/usage.toml
 
 Options:
   --config <file>            another config file than
@@ -35,6 +43,8 @@ pub enum Edit {
     SetTrigger(String),
     SetAlias(String, String),
     RemoveAlias(String),
+    SetSkinTone(String),
+    SetRememberUsage(bool),
 }
 
 /// What the arguments ask for.
@@ -50,6 +60,7 @@ pub enum Mode {
         config: Option<PathBuf>,
         edits: Vec<Edit>,
     },
+    ClearUsage,
     Help,
     Version,
 }
@@ -58,6 +69,7 @@ pub enum Mode {
 pub fn parse_args(args: &[String]) -> Result<Mode, String> {
     let mut config = None;
     let mut check = false;
+    let mut clear_usage = false;
     let mut edits = Vec::new();
     let mut it = args.iter();
     let value = |it: &mut std::slice::Iter<String>, flag: &str| {
@@ -80,8 +92,32 @@ pub fn parse_args(args: &[String]) -> Result<Mode, String> {
                 edits.push(Edit::SetAlias(name.to_string(), text.to_string()));
             }
             "--remove-alias" => edits.push(Edit::RemoveAlias(value(&mut it, "--remove-alias")?)),
+            "--set-skin-tone" => {
+                edits.push(Edit::SetSkinTone(value(&mut it, "--set-skin-tone")?));
+            }
+            "--set-remember-usage" => {
+                let v = value(&mut it, "--set-remember-usage")?;
+                let on = match v.as_str() {
+                    "true" => true,
+                    "false" => false,
+                    _ => {
+                        return Err(format!(
+                            "--set-remember-usage needs true or false, not {v:?}"
+                        ));
+                    }
+                };
+                edits.push(Edit::SetRememberUsage(on));
+            }
+            "--clear-usage" => clear_usage = true,
             other => return Err(format!("unknown argument: {other}")),
         }
+    }
+    if clear_usage {
+        return if check || !edits.is_empty() {
+            Err("--clear-usage goes alone".into())
+        } else {
+            Ok(Mode::ClearUsage)
+        };
     }
     match (check, edits.is_empty()) {
         (true, false) => Err("--check does not go with an edit".into()),
@@ -174,6 +210,8 @@ pub fn edit(path: &Path, edits: &[Edit]) -> Report {
             Edit::SetTrigger(t) => doc.set_trigger(t),
             Edit::SetAlias(n, t) => doc.set_alias(n, t),
             Edit::RemoveAlias(n) => doc.remove_alias(n),
+            Edit::SetSkinTone(t) => doc.set_skin_tone(t),
+            Edit::SetRememberUsage(on) => doc.set_remember_usage(*on),
         };
         if let Err(r) = result {
             return Report::fail(r.0.iter().map(|p| problem_line(path, p) + "\n").collect());
@@ -182,6 +220,24 @@ pub fn edit(path: &Path, edits: &[Edit]) -> Report {
     match doc.save(path) {
         Ok(()) => Report::ok(format!("{}: saved\n", path.display())),
         Err(e) => Report::fail(format!("{}: {e}\n", path.display())),
+    }
+}
+
+/// The usage file: `$XDG_STATE_HOME/torpedo/usage.toml`, or the default.
+pub fn resolve_usage() -> Result<PathBuf, String> {
+    usage::default_usage_path()
+        .ok_or_else(|| "cannot find the usage file: neither XDG_STATE_HOME nor HOME is set".into())
+}
+
+/// Delete the usage file at `path`. A missing file is no problem.
+pub fn clear_usage(path: &Path) -> Report {
+    match fs::remove_file(path) {
+        Ok(()) => Report::ok(format!("{}: cleared\n", path.display())),
+        Err(e) if e.kind() == ErrorKind::NotFound => Report::ok(format!(
+            "{}: no usage file, nothing to clear\n",
+            path.display()
+        )),
+        Err(e) => Report::fail(format!("{}: cannot delete it: {e}\n", path.display())),
     }
 }
 
@@ -286,6 +342,68 @@ mod tests {
         let r = edit(&path, &[Edit::SetAlias("ok".into(), "👍".into())]);
         assert_eq!(r.status, 0, "{}", r.err);
         assert!(fs::read_to_string(&path).unwrap().contains("ok = \"👍\""));
+        fs::remove_dir_all(d).unwrap();
+    }
+
+    #[test]
+    fn the_usage_flags_parse() {
+        assert_eq!(
+            parse_args(&args(&[
+                "--set-skin-tone",
+                "dark",
+                "--set-remember-usage",
+                "false"
+            ])),
+            Ok(Mode::Edit {
+                config: None,
+                edits: vec![
+                    Edit::SetSkinTone("dark".into()),
+                    Edit::SetRememberUsage(false)
+                ]
+            })
+        );
+        assert_eq!(parse_args(&args(&["--clear-usage"])), Ok(Mode::ClearUsage));
+        assert!(parse_args(&args(&["--set-remember-usage", "no"])).is_err());
+        assert!(parse_args(&args(&["--set-skin-tone"])).is_err());
+        assert!(parse_args(&args(&["--clear-usage", "--check"])).is_err());
+        assert!(parse_args(&args(&["--clear-usage", "--set-skin-tone", "dark"])).is_err());
+    }
+
+    #[test]
+    fn the_skin_tone_and_usage_edits() {
+        let d = dir("tone");
+        let path = d.join("config.toml");
+        fs::write(&path, "skin_tone = \"medium\"\n").unwrap();
+        let r = edit(&path, &[Edit::SetSkinTone("purple".into())]);
+        assert_eq!(r.status, 1);
+        assert!(r.err.contains(": skin_tone: "), "{}", r.err);
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "skin_tone = \"medium\"\n"
+        );
+        let r = edit(
+            &path,
+            &[
+                Edit::SetSkinTone("dark".into()),
+                Edit::SetRememberUsage(false),
+            ],
+        );
+        assert_eq!(r.status, 0, "{}", r.err);
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "skin_tone = \"dark\"\nremember_usage = false\n"
+        );
+        fs::remove_dir_all(d).unwrap();
+    }
+
+    #[test]
+    fn clear_usage_deletes_the_file_and_accepts_none() {
+        let d = dir("clear");
+        let path = d.join("usage.toml");
+        fs::write(&path, "x").unwrap();
+        assert_eq!(clear_usage(&path).status, 0);
+        assert!(!path.exists());
+        assert_eq!(clear_usage(&path).status, 0);
         fs::remove_dir_all(d).unwrap();
     }
 }

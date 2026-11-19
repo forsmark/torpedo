@@ -1,7 +1,7 @@
 # settings-window Specification
 
 ## Purpose
-The settings window lets the user edit the trigger and the aliases without editing the config file by hand. It never writes a bad config file, and the user can open it from the input source menu.
+The settings window lets the user edit the trigger, the aliases, the skin tone and the usage switch without editing the config file by hand, and clear the usage. It never writes a bad config file, and the user can open it from the input source menu.
 
 ## Requirements
 
@@ -55,6 +55,12 @@ Saving SHALL check each value with the rules that `config-file` defines. When a 
 - **THEN** it fails and names the alias `looks good`
 - **AND** the config file is unchanged
 
+#### Scenario: Saving a bad skin tone
+- **GIVEN** a config file with `skin_tone = "medium"`
+- **WHEN** `torpedo-settings --set-skin-tone purple` runs
+- **THEN** it fails and names `skin_tone`
+- **AND** the config file still holds `skin_tone = "medium"`
+
 ### Requirement: Saving replaces the file in one step
 Saving SHALL write the new config file next to the old one and rename it into place. A reader SHALL see either the old file or the new one, never part of one.
 
@@ -73,9 +79,9 @@ Saving SHALL write the new config file next to the old one and rename it into pl
 Saving SHALL keep the comments, the keys and the tables of the config file that the settings window does not edit.
 
 #### Scenario: A comment and an unknown key survive
-- **GIVEN** a config file with a comment line, `skin_tone = "medium"` and the alias `lgtm = "👍"`
+- **GIVEN** a config file with a comment line, `theme = "dark"` and the alias `lgtm = "👍"`
 - **WHEN** `torpedo-settings --set-alias "ship=🚀"` runs
-- **THEN** the config file still holds the comment line, `skin_tone = "medium"` and the alias `lgtm`
+- **THEN** the config file still holds the comment line, `theme = "dark"` and the alias `lgtm`
 - **AND** it holds the alias `ship = "🚀"`
 
 ### Requirement: Saving creates the config file
@@ -87,7 +93,7 @@ When the config file or its folder does not exist, saving SHALL create them.
 - **THEN** `$XDG_CONFIG_HOME/torpedo/config.toml` holds the alias `lgtm`
 
 ### Requirement: The settings command runs without a window
-`torpedo-settings` SHALL open no window when it runs with `--check`, `--set-trigger`, `--set-alias` or `--remove-alias`. `--config <file>` SHALL name another config file. `--check` SHALL exit with status 0 for a good file and 1 for a bad one, and SHALL print each problem.
+`torpedo-settings` SHALL open no window when it runs with `--check`, `--set-trigger`, `--set-alias`, `--remove-alias`, `--set-skin-tone`, `--set-remember-usage` or `--clear-usage`. `--config <file>` SHALL name another config file. `--check` SHALL exit with status 0 for a good file and 1 for a bad one, and SHALL print each problem. `--clear-usage` SHALL delete the usage file, and SHALL succeed when there is none.
 
 #### Scenario: Check a good file
 - **GIVEN** a config file with the trigger `;;` and the alias `lgtm = "👍"`
@@ -110,6 +116,27 @@ When the config file or its folder does not exist, saving SHALL create them.
 - **THEN** `other.toml` holds the trigger `:`
 - **AND** no file under `XDG_CONFIG_HOME` changed
 
+#### Scenario: Set the skin tone
+- **GIVEN** a config file with the trigger `;;`
+- **WHEN** `torpedo-settings --set-skin-tone medium-light` runs with no display
+- **THEN** the config file holds `skin_tone = "medium-light"` and the trigger `;;`
+
+#### Scenario: Turn usage off
+- **GIVEN** a config file with no `remember_usage` key
+- **WHEN** `torpedo-settings --set-remember-usage false` runs with no display
+- **THEN** the config file holds `remember_usage = false`
+
+#### Scenario: Clear the usage
+- **GIVEN** `XDG_STATE_HOME` names a folder whose `torpedo/usage.toml` exists
+- **WHEN** `torpedo-settings --clear-usage` runs with no display
+- **THEN** it exits with status 0
+- **AND** `$XDG_STATE_HOME/torpedo/usage.toml` no longer exists
+
+#### Scenario: Clear the usage when there is none
+- **GIVEN** `XDG_STATE_HOME` names an empty folder
+- **WHEN** `torpedo-settings --clear-usage` runs with no display
+- **THEN** it exits with status 0
+
 ### Requirement: The input source menu opens the settings window
 The engine SHALL register an IBus property with the label "Torpedo settings" whenever an input context gains focus. When the user activates that property, the engine SHALL start the settings command. The settings command SHALL be the value of `TORPEDO_SETTINGS_COMMAND` when it is set, and otherwise `torpedo-settings` in the engine's own folder.
 
@@ -131,3 +158,34 @@ The engine SHALL register an IBus property with the label "Torpedo settings" whe
 - **GIVEN** `TORPEDO_SETTINGS_COMMAND` names a command that keeps running
 - **WHEN** the panel activates the property "Torpedo settings", and the user types `::fire:` at a boundary
 - **THEN** the app receives 🔥
+
+### Requirement: The settings window edits the skin tone
+The settings window SHALL offer each skin tone that `config-file` defines in *The skin_tone value*, each with a 👋 in that tone, and SHALL save the one the user picks.
+
+#### Scenario: The skin tone selector
+- **GIVEN** a config file with `skin_tone = "medium"`
+- **WHEN** the user opens the settings window and picks the dark tone
+- **THEN** before the pick, the selector showed the medium tone with 👋🏽
+- **AND** the config file holds `skin_tone = "dark"`
+
+### Requirement: The settings window edits remember_usage
+The settings window SHALL show a switch for `remember_usage` and SHALL save its state when the user flips it.
+
+#### Scenario: The usage switch
+- **GIVEN** a config file with no `remember_usage` key
+- **WHEN** the user opens the settings window and turns the switch off
+- **THEN** before the flip, the switch was on
+- **AND** the config file holds `remember_usage = false`
+
+### Requirement: The settings window clears the usage
+The "Clear usage" button SHALL ask for a confirmation in a dialog inside the settings window. The settings window SHALL delete the usage file only when the user confirms.
+
+#### Scenario: Clear usage confirmed
+- **GIVEN** a usage file exists
+- **WHEN** the user presses "Clear usage" and confirms in the dialog
+- **THEN** the usage file no longer exists
+
+#### Scenario: Clear usage cancelled
+- **GIVEN** a usage file exists
+- **WHEN** the user presses "Clear usage" and cancels the dialog
+- **THEN** the usage file is unchanged

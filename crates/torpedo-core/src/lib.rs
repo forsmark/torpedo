@@ -7,6 +7,8 @@ pub mod config;
 pub mod emoji;
 pub mod keys;
 pub mod picker;
+pub mod tone;
+pub mod usage;
 
 /// The version of torpedo, from the crate's manifest.
 pub fn version() -> &'static str {

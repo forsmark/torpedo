@@ -1,7 +1,8 @@
 /**
  * One private session per test file, and a new input context per test. The
  * engine starts each test with nothing held, because a new context takes
- * the focus.
+ * the focus. Each test also starts with no usage: the fixture deletes the
+ * usage file, and the engine reads that on the focus-in of the new context.
  */
 import assert from 'node:assert/strict';
 import { after, before, beforeEach } from 'node:test';
@@ -16,6 +17,7 @@ export function usePicker(options = {}) {
     await t.session?.close();
   });
   beforeEach(async () => {
+    t.session.removeUsage();
     t.app = await t.session.context();
   });
   return t;
