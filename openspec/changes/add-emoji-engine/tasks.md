@@ -2,8 +2,8 @@
 
 ## 1. Data and docs
 
-- [ ] 1.1 Vendor gemoji: copy `db/emoji.json` and `LICENSE` from github/gemoji at commit `fadaeaf1f1a9be82b321316a6c5502e43138b2f6` into `crates/torpedo-core/data/gemoji/`, and add a `README.md` there that names the source, the commit, its date and the MIT license. Verify that the file parses with `python3 -I -c "import json; json.load(open(...))"` and holds 1870 entries.
-- [ ] 1.2 Add `docs/ibus-protocol.md` with the durable parts of the spike's FINDINGS.md: the component path and cache, the address lookup, the GVariant shapes and the double-wrap pitfall, the D-Bus surface, the harness facts, the commands and the safety traps. Leave out spike-only details such as the env switches. Verify that every section of FINDINGS.md that this design relies on has a counterpart.
+- [x] 1.1 Vendor gemoji: copy `db/emoji.json` and `LICENSE` from github/gemoji at commit `fadaeaf1f1a9be82b321316a6c5502e43138b2f6` into `crates/torpedo-core/data/gemoji/`, and add a `README.md` there that names the source, the commit, its date and the MIT license. Verify that the file parses with `python3 -I -c "import json; json.load(open(...))"` and holds 1870 entries.
+- [x] 1.2 Add `docs/ibus-protocol.md` with the durable parts of the spike's FINDINGS.md: the component path and cache, the address lookup, the GVariant shapes and the double-wrap pitfall, the D-Bus surface, the harness facts, the commands and the safety traps. Leave out spike-only details such as the env switches. Verify that every section of FINDINGS.md that this design relies on has a counterpart.
 
 ## 2. The engine on the wire
 
