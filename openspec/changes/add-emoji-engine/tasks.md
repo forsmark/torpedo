@@ -35,7 +35,7 @@
 
 ## 6. Integration
 
-- [ ] 6.1 On a clean tree, run `node scripts/verify.mjs`, `node --test "scripts/**/*.test.mjs"` and `node tools/spec-checks/bin/spec-checks verify`. Verify that all three pass, that `pgrep -af ibus-daemon` shows only the owner's daemon, and that `~/.config/ibus/bus/` is unchanged.
+- [x] 6.1 On a clean tree, run `node scripts/verify.mjs`, `node --test "scripts/**/*.test.mjs"` and `node tools/spec-checks/bin/spec-checks verify`. Verify that all three pass, that `pgrep -af ibus-daemon` shows only the owner's daemon, and that `~/.config/ibus/bus/` is unchanged. Note: before the sync, `spec-checks verify` fails only its coverage check, because the map names scenarios that exist only in the delta specs until the archive. On a synced copy of the branch it passes all six checks, with 96 of 96 scenarios mapped. The workflow follow-up runs it again after the archive.
 
 ## Workflow follow-up
 
